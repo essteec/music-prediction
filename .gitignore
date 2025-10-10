@@ -1,0 +1,102 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Data Files (Large)
+*.csv
+*.json
+*.tsv
+*.parquet
+dataset/raw/
+dataset/processed/
+!dataset/genre_mappings.csv
+
+# Model Files
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.onnx
+*.pb
+results/models/*
+!results/models/.gitkeep
+
+# Logs
+*.log
+logs/
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment variables
+.env
+.env.local
+secrets.yaml
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Scraped data cache
+*.html
+!dataset/page_*.html
+!dataset/genre_page_*.html
+
+# Specific large files
+spotify-songs-with-attributes-and-lyrics.zip
+
+# Keep directory structure
+!results/
+!results/models/
+!results/metrics/
+!results/figures/
+results/**
+!results/**/.gitkeep
