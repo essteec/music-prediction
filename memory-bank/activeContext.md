@@ -2,18 +2,28 @@
 
 ## Current Sprint (Week Oct 7-14, 2025)
 
-### Active Tasks from Timeline
-1. **Specify dataset** ✓ (Partially complete)
-   - Dataset identified: Spotify songs with attributes and lyrics
-   - Features confirmed: audio metrics, lyrics, metadata
-   - Enhanced with scraper for missing values
+### 🔥 CRITICAL PIVOT: Scraping Performance Crisis
+
+**Status Update (October 11, 2025)**:
+- ⚠️ **Selenium scraping is FAILING**: Only 3,529 songs scraped in 12 hours (12 sec/song)
+- 📊 **Remaining**: 951,768 songs = 136 days at current rate
+- 🚨 **Problem**: Thesis deadline makes this approach IMPOSSIBLE
+- ✅ **Decision**: Migrating to HTTP-based scraping (10-50x faster)
+
+### Active Tasks - UPDATED PRIORITIES
+1. **Data Collection - URGENT REFACTOR** 🔥
+   - **Current**: Selenium-based scraper (TOO SLOW - 12 sec/song)
+   - **Target**: HTTP-based scraper (1-3 sec/song)
+   - **Progress**: 3,529 songs successfully scraped, 23 failed (PRESERVE THIS DATA)
+   - **Next**: Reverse-engineer HTTP requests, rebuild scraper without browser overhead
+   - **Strategy**: Linear scraping (no concurrency), manual stop after 10K-50K songs
    
-2. **Get 10 similar thesis for reference** (In Progress)
+2. **Get 10 similar thesis for reference** (Postponed until scraping resolved)
    - Need to collect academic references
    - Target: Theses on music prediction, lyric analysis, audio feature ML
    
-3. **Write abstract** (Pending)
-   - Waiting on: Final decision on target variable
+3. **Write abstract** (Postponed until scraping resolved)
+   - Waiting on: Scraping completion
    - Needs: Clear problem statement and methodology outline
 
 ## ✅ DECISION FINALIZED: Multi-Target Prediction
@@ -181,15 +191,38 @@ This is a **methodology contribution** valuable for future music prediction rese
 ## Recent Insights
 
 ### Dataset Insights
-- Dataset is large (>50MB CSV) - need efficient processing
+- Dataset is large (955,320 songs, 1.5GB CSV) - need efficient processing
 - Lyrics are available - enables NLP approaches
 - Audio features are comprehensive - good foundation
-- Scraper successfully added missing metadata
+- **Current scraping status**: 3,529 songs enhanced, 23 failed (0.37% of total)
+- **Scraping bottleneck**: Selenium approach taking 136 days total - UNACCEPTABLE
 
-### Technical Insights
-- Chosic scraper works but is fragile (HTML structure-dependent)
-- Need to handle rate limiting carefully
-- Sample-first approach is good practice
+### Technical Insights - Scraping Crisis Lessons
+- **Selenium is TOO SLOW**: 12 seconds per song due to browser overhead
+  - Full page load, JavaScript execution, CSS rendering all unnecessary
+  - Browser automation adds 10-50x overhead vs direct HTTP requests
+- **Root causes identified**:
+  1. Browser startup/teardown overhead
+  2. Full page rendering (images, CSS, JavaScript)
+  3. Dynamic genre mapping spawning separate browser instances
+  4. Wait times for elements to appear (5+ seconds per page)
+- **Genre mapper bug**: Created separate Chrome instances that froze/crashed
+  - Fixed by reusing same browser session
+  - But still too slow due to browser overhead
+- **Solution path**: Migrate to HTTP requests + BeautifulSoup (no browser)
+  - Expected: 1-3 sec/song (10-50x speedup)
+  - Same HTML parsing logic, just faster transport
+  - Zero budget (no proxies unless rate limited)
+  
+### Critical Decisions Made
+- **No concurrency**: Linear scraping to avoid complexity and rate limiting
+- **Manual stop control**: Can interrupt after 10K-50K songs (sufficient for thesis)
+- **Preserve existing data**: 3,529 scraped + 23 failed must not be lost
+- **Phase approach**: 
+  1. ✅ Critical analysis complete
+  2. 🔄 Planning phase (waiting for HTTP request examples)
+  3. ⏳ Coding phase (rebuild with requests library)
+  4. ⏳ Testing and full scraping run
 
 ### Project Insights
 - This is a comparison study, not just building one model

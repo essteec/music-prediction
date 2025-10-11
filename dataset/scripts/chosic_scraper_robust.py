@@ -361,8 +361,8 @@ class RobustChosicScraper:
                 # Success!
                 self.scrapes_since_restart += 1
                 
-                # Random delay between requests (2-4 seconds)
-                delay = random.uniform(2.0, 4.0)
+                # Random delay between requests (2-3 seconds)
+                delay = random.uniform(2.0, 3.5)
                 time.sleep(delay)
                 
                 return metadata

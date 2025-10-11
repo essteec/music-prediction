@@ -3,14 +3,21 @@
 ## ✅ Completed
 
 ### Dataset Phase
-- [x] **Data Source Identified**: Spotify songs with attributes and lyrics
-- [x] **Base Dataset Acquired**: CSV with audio features, lyrics, and metadata
-- [x] **Scraper Development**: Built Chosic.com scraper for missing values
+- [x] **Data Source Identified**: Spotify songs with attributes and lyrics (955,320 songs)
+- [x] **Base Dataset Acquired**: CSV with audio features, lyrics, and metadata (1.5GB)
+- [x] **Scraper Development - V1 (Selenium)**: Built initial Chosic.com scraper
   - Scrapes: popularity, genre, release year, explicit flag
   - Uses: Selenium + BeautifulSoup
-  - Features: Headless mode, rate limiting, sample-first approach
-- [x] **Genre Mapping**: Genre normalization system implemented
-- [x] **Data Enhancement**: Successfully scraped additional metadata
+  - Features: Headless mode, rate limiting, browser recovery, NaN validation
+  - **Status**: ❌ TOO SLOW (12 sec/song = 136 days for full dataset)
+  - **Progress**: 3,529 songs scraped, 23 failed
+- [x] **Genre Mapping**: Dynamic genre normalization with safe browser reuse
+- [x] **Critical Analysis**: Identified performance bottleneck, planned migration
+- [ ] **Scraper Development - V2 (HTTP)**: 🔄 IN PROGRESS - Rebuilding with requests library
+  - **Goal**: 10-50x speed improvement (1-3 sec/song)
+  - **Approach**: Direct HTTP requests, same HTML parsing logic
+  - **Strategy**: Linear scraping, manual stop control, checkpoint resumption
+  - **Phase**: Awaiting HTTP request analysis from user
 
 ### Project Structure
 - [x] **Basic Folder Structure**: dataset/, ml/, thesis/, timeline/ created
@@ -152,16 +159,31 @@
 ### Dataset
 - **Issue**: Main CSV file >50MB (cannot open directly in VS Code)
   - **Impact**: Need alternative tools for inspection
-  - **Solution**: Use pandas chunking, command-line tools, or Jupyter
+  - **Solution**: ✅ Use pandas chunking, command-line tools, or Jupyter (working)
 
-### Scraper
-- **Issue**: HTML parsing is fragile (relies on page structure)
-  - **Impact**: May break if Chosic.com changes layout
-  - **Solution**: Use more robust selectors (TODO in code), error handling
+### Scraper - CRITICAL PERFORMANCE ISSUE 🚨
+- **Issue**: Selenium-based scraper is UNACCEPTABLY SLOW
+  - **Speed**: 12 seconds per song
+  - **Total time**: 136 days for 955K songs
+  - **Root causes**:
+    1. Full browser rendering (images, CSS, JavaScript)
+    2. Browser startup/teardown overhead
+    3. Element waiting times (5+ seconds per page)
+    4. Dynamic genre mapping with browser spawning
+  - **Impact**: ❌ Cannot finish scraping before thesis deadline
+  - **Solution**: 🔄 Migrating to HTTP-based scraping
+    - Target speed: 1-3 sec/song (10-50x improvement)
+    - Expected time: 11-33 days for full dataset
+    - Strategy: Can manually stop after 10K-50K songs (sufficient for thesis)
+  - **Status**: Phase 2 Planning - awaiting HTTP request analysis
+
+- **Issue**: Genre mapper spawned separate browser instances
+  - **Impact**: Browsers froze/crashed, causing NaN values
+  - **Solution**: ✅ Fixed - reuses same browser instance safely
   
-- **Issue**: Fixed sleep interval (3 seconds)
-  - **Impact**: Inefficient, may still miss dynamically loaded content
-  - **Solution**: Use WebDriverWait for specific elements
+- **Issue**: No validation before saving
+  - **Impact**: NaN values were being saved to CSV
+  - **Solution**: ✅ Fixed - validates metadata before saving
 
 ### Collaboration
 - **Issue**: GitHub not yet setup
@@ -174,20 +196,25 @@
 
 ## 📊 Project Status Overview
 
-### Overall Progress: ~15%
+### Overall Progress: ~10% (adjusted due to scraping crisis)
 
 **Phase Breakdown**:
-- ✅ Data Collection: 80% (scraping done, validation pending)
-- 🚧 Data Preprocessing: 0% (not started)
-- 📋 Feature Engineering: 0% (not started)
-- 📋 Model Training: 0% (not started)
-- 📋 Evaluation: 0% (not started)
-- 🚧 Thesis Writing: 5% (planning phase)
+- 🚧 Data Collection: 20% (0.37% scraped, rebuilding scraper for speed)
+- � Data Preprocessing: 0% (blocked by data collection)
+- 📋 Feature Engineering: 0% (blocked by data collection)
+- 📋 Model Training: 0% (blocked by data collection)
+- 📋 Evaluation: 0% (blocked by data collection)
+- 🚧 Thesis Writing: 5% (planning phase, paused until scraping resolved)
 
-### Timeline Health: ✅ On Track
-- Week 1 tasks are achievable
-- Early planning phase is appropriate
-- Scope is well-defined
+### Timeline Health: ⚠️ AT RISK - Critical Blocker
+- **Blocker**: Scraping performance crisis (136 days at current rate)
+- **Impact**: All downstream work is blocked (EDA, ML, thesis)
+- **Mitigation**: Emergency migration to HTTP-based scraping
+- **Recovery Plan**: 
+  1. Complete HTTP scraper migration (1-2 days)
+  2. Scrape 10K-50K songs (1-3 days)
+  3. Resume normal timeline with sufficient data
+- **Contingency**: If HTTP scraping also fails, pivot to sampling strategy
 
 ## 🎯 Next Milestone
 
