@@ -20,6 +20,12 @@ def print_csv_pretty(csv_file, rows=None):
         else:
             df = pd.read_csv(csv_file)
         
+        # Filter to only show specific columns if they exist
+        columns_to_show = ['id', 'popularity', 'genre', 'explicit', 'year', 'valence', 'energy', 'danceability']
+        available_columns = [col for col in columns_to_show if col in df.columns]
+        if available_columns:
+            df = df[available_columns]
+        
         # Print basic info
         print(f"\n{'='*80}")
         print(f"File: {csv_file}")

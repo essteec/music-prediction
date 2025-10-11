@@ -253,8 +253,9 @@ def main():
     Main function with checkpoint resumption support.
     You can run this script multiple times - it will always resume from where it left off.
     """
-    INPUT_FILE = 'songs_with_attributes_and_lyrics.csv'
-    OUTPUT_FILE = 'songs_enhanced_full.csv'
+    # Paths relative to dataset/ directory (parent of scripts/)
+    INPUT_FILE = '../songs_with_attributes_and_lyrics.csv'
+    OUTPUT_FILE = '../songs_enhanced_full.csv'
     
     print("=" * 60)
     print("Chosic Scraper with Checkpoint Resumption")

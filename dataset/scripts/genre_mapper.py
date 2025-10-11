@@ -19,7 +19,7 @@ MAIN_GENRES = [
     "R&B", "Rock", "Pop", "Hip-Hop", "Electronic"
 ]
 
-GENRE_MAP_FILE = "genre_mappings.csv"
+GENRE_MAP_FILE = "../genre_mappings.csv"
 
 
 def load_genre_mappings():
@@ -36,52 +36,26 @@ def load_genre_mappings():
 def save_genre_mapping(subgenre, main_genre):
     """
     Save a new genre mapping to CSV file
-    Only saves if main_genre is one of the valid MAIN_GENRES or "Unknown"
+    Saves mappings for valid MAIN_GENRES or "Unknown"
     """
-    # Allow "Unknown" as a special case
-    if main_genre == "Unknown":
-        print(f"⚠ Mapping '{subgenre}' to 'Unknown' (not saved to CSV)")
-        with open(GENRE_MAP_FILE, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['subgenre', 'main_genre'])
-            
-            if not file_exists:
-                writer.writeheader()
-            
-            writer.writerow({
-                'subgenre': subgenre,
-                'main_genre': main_genre
-            })
-        
-        print(f"✓ Saved mapping: '{subgenre}' → '{main_genre}'")
-        return False
-    
-    # Validate that main_genre is actually a main genre
-    is_main_genre = False
-    for main in MAIN_GENRES:
-        if main.lower() == main_genre.lower():
-            is_main_genre = True
-            main_genre = main  # Use the proper casing from MAIN_GENRES
-            break
-    
-    if not is_main_genre:
-        print(f"✗ Cannot save mapping: '{main_genre}' is not a valid main genre")
-        print(f"   Valid main genres: {', '.join(MAIN_GENRES)}")
-        with open(GENRE_MAP_FILE, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['subgenre', 'main_genre'])
-            
-            if not file_exists:
-                writer.writeheader()
-            
-            writer.writerow({
-                'subgenre': subgenre,
-                'main_genre': "Unknown"
-            })
-
-        print(f"✓ Saved mapping: '{subgenre}' → 'Unknown'")
-        return False
-    
+    # Check if file exists before opening
     file_exists = os.path.exists(GENRE_MAP_FILE)
     
+    # Validate that main_genre is actually a main genre (or Unknown)
+    if main_genre != "Unknown":
+        is_main_genre = False
+        for main in MAIN_GENRES:
+            if main.lower() == main_genre.lower():
+                is_main_genre = True
+                main_genre = main  # Use the proper casing from MAIN_GENRES
+                break
+        
+        if not is_main_genre:
+            print(f"✗ Cannot save mapping: '{main_genre}' is not a valid main genre")
+            print(f"   Valid main genres: {', '.join(MAIN_GENRES)}")
+            main_genre = "Unknown"
+    
+    # Save the mapping to CSV
     with open(GENRE_MAP_FILE, 'a', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['subgenre', 'main_genre'])
         
@@ -94,7 +68,7 @@ def save_genre_mapping(subgenre, main_genre):
         })
     
     print(f"✓ Saved mapping: '{subgenre}' → '{main_genre}'")
-    return True
+    return main_genre != "Unknown"
 
 
 def scrape_parent_genre(genre_slug):
@@ -119,9 +93,6 @@ def scrape_parent_genre(genre_slug):
         driver.get(url)
         print("Waiting for parent genre element to load...")
         try:
-            # User-requested additional wait for rate limiting
-            print("Waiting 8 seconds...")
-            time.sleep(8)
 
             # Wait up to 15 seconds for the element with class 'parent-genre' to be present
             print("Looking for element with class 'parent-genre'...")
@@ -129,6 +100,9 @@ def scrape_parent_genre(genre_slug):
                 EC.presence_of_element_located((By.CLASS_NAME, "parent-genre"))
             )
             
+            # User-requested additional wait for rate limiting
+            print("Waiting 8 seconds...")
+            time.sleep(8)
 
             # Now find the <a> tag within the located element
             first_link = parent_element.find_elements(By.TAG_NAME, "a")
@@ -229,6 +203,40 @@ def get_main_genre_for_list(subgenres):
         genre_mappings[subgenre] = main_genre
         if main_genre and main_genre != "Unknown":
             main_genres_found.append(main_genre)
+
+    if not main_genres_found:
+        return "Unknown"
+
+    # Count the occurrences of each main genre and return the most common
+    genre_counts = Counter(main_genres_found)
+    most_common_genre = genre_counts.most_common(1)[0][0]
+    
+    return most_common_genre
+
+
+def get_main_genre_for_list_static(subgenres):
+    """
+    STATIC VERSION: Get the most common main genre from a list of subgenres.
+    Uses ONLY pre-existing mappings - NO dynamic scraping.
+    This prevents browser crashes during scraping.
+    """
+    main_genres_found = []
+    genre_mappings = load_genre_mappings()  # Load cache once
+
+    for subgenre in subgenres:
+        subgenre_lower = subgenre.lower()
+        
+        # Check if in mappings
+        if subgenre_lower in genre_mappings:
+            main_genre = genre_mappings[subgenre_lower]
+            if main_genre and main_genre != "Unknown":
+                main_genres_found.append(main_genre)
+        else:
+            # Check if subgenre is already a main genre
+            for main in MAIN_GENRES:
+                if main.lower() == subgenre_lower:
+                    main_genres_found.append(main)
+                    break
 
     if not main_genres_found:
         return "Unknown"
