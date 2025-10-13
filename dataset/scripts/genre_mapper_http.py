@@ -235,7 +235,7 @@ def get_main_genre_for_list(subgenres):
         
         # Add delay ONLY if we actually made an HTTP request
         if was_scraped:
-            time.sleep(0.4)  # 0.4 second delay after scraping to avoid rate limiting
+            time.sleep(0.3)  # 0.3 second delay after scraping to avoid rate limiting
 
     if not main_genres_found:
         return "Unknown"
