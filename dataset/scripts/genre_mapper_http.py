@@ -2,6 +2,19 @@
 Genre Mapping System (HTTP Version)
 Maps sub-genres to main genres using a CSV file and HTTP requests when needed
 NO SELENIUM - Uses requests library for web scraping
+
+==================== HOW TO GET COOKIES ====================
+If you get 403 errors, you need to provide valid cookies from your browser:
+
+1. Open Firefox/Chrome and go to: https://www.chosic.com/
+2. Open Developer Tools (F12) > Network tab
+3. Refresh the page
+4. Click on any request to chosic.com
+5. Copy the entire "Cookie" header value
+6. Save it to 'cookies.txt' in the same directory
+
+Your cookies should include: pll_language, cf_clearance, r_c1062550
+============================================================
 """
 import csv
 import os
@@ -17,6 +30,49 @@ MAIN_GENRES = [
 ]
 
 GENRE_MAP_FILE = "../genre_mappings.csv"
+COOKIES_FILE = "cookies.txt"
+
+# Global session with cookies (loaded once)
+_session = None
+
+
+def get_session():
+    """Get or create a requests session with cookies loaded"""
+    global _session
+    
+    if _session is None:
+        _session = requests.Session()
+        
+        # Load cookies if available
+        if os.path.exists(COOKIES_FILE):
+            try:
+                with open(COOKIES_FILE, 'r') as f:
+                    cookies_string = f.read().strip()
+                
+                # Parse and add cookies
+                for cookie in cookies_string.split(';'):
+                    cookie = cookie.strip()
+                    if '=' in cookie:
+                        key, value = cookie.split('=', 1)
+                        _session.cookies.set(key.strip(), value.strip(), domain='.chosic.com')
+                
+                print(f"✓ Loaded cookies from {COOKIES_FILE}: {list(_session.cookies.keys())}")
+            except Exception as e:
+                print(f"⚠ Could not load cookies: {e}")
+        
+        # Set headers
+        _session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Sec-GPC': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        })
+    
+    return _session
 
 
 def load_genre_mappings():
@@ -78,27 +134,17 @@ def scrape_parent_genre(genre_slug, max_retries=3):
         max_retries: Maximum number of retry attempts
     """
     url = f"https://www.chosic.com/genre-chart/{genre_slug}/"
+    session = get_session()  # Use session with cookies
     
     for attempt in range(max_retries):
         try:
             if attempt > 0:
                 print(f"      Attempt {attempt + 1}/{max_retries}")
             
-            # Use requests instead of Selenium
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'DNT': '1',
-                'Sec-GPC': '1',
-                'Connection': 'keep-alive',
-            }
-            
-            response = requests.get(url, headers=headers, timeout=10)
+            response = session.get(url, timeout=10)
             
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                
                 # Find parent genre element
                 parent_element = soup.find(class_='parent-genre')
                 
@@ -108,7 +154,14 @@ def scrape_parent_genre(genre_slug, max_retries=3):
                     if first_link:
                         parent_genre = first_link.get_text().strip()
                         return parent_genre
-                
+                print(soup.prettify()[:500])  # Print first 500 chars for debugging
+                return None
+            
+            elif response.status_code == 403:
+                # Cloudflare block
+                print(f"      ❌ Blocked by Cloudflare (403)")
+                print(f"      💡 Solution: Add valid cookies to {COOKIES_FILE}")
+                print(f"         See instructions at top of this file")
                 return None
             
             elif response.status_code == 429:
@@ -283,7 +336,7 @@ def get_main_genre_for_list_static(subgenres):
 # Test the system
 if __name__ == "__main__":
     # Example usage
-    test_genres = ['trap-italiana', 'italian-trap', 'italian-hip-hop', 'emo-rap-italiano', 'drill-italiana']
+    test_genres = ['vietnamese-hip-hop', 'vietnam-indie', 'viet chill rap', 'vietnamese-trap', 'v-pop', 'vietnamese-melodic-rap']
     
     print("Testing genre mapper...")
     print("=" * 50)
