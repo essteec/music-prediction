@@ -68,7 +68,45 @@ From `dataset/requirements.txt`:
 pandas
 beautifulsoup4
 selenium
+requests  # Added for HTTP-based scraper
 ```
+
+## Dataset Files (November 10, 2025)
+
+### Scraped Data Files ✅ COMPLETE
+1. **songs_enhanced_full.csv**
+   - All successful scrapes
+   - Contains: popularity, genre, year, explicit flag
+   - **Status**: Needs validation
+   - **Known Issues**: 
+     - Some NaN genre values
+     - Some year = 0 values
+   
+2. **failed_tracks.csv**
+   - All failed scrapes
+   - Contains: track information and failure reasons
+   - **Status**: Needs analysis
+   - **Next**: Determine failure patterns, retry strategy
+   
+3. **unknown_tracks.csv**
+   - Successful scrapes with undetected genres
+   - Contains: track info but genre detection failed
+   - **Status**: Needs processing
+   - **Next**: Alternative genre mapping or categorization
+
+4. **genre_mappings.csv**
+   - Genre normalization mappings
+   - **Status**: Reference file for genre validation
+
+### Original Data Files
+5. **songs_with_attributes_and_lyrics.csv**
+   - Base dataset (955,320 songs, 1.5GB)
+   - Audio features + lyrics
+   - **Status**: Source data for scraping
+
+6. **songs_with_lyrics_and_timestamps.csv**
+   - Additional temporal information
+   - **Status**: Reference data
 
 ## Recommended Additional Dependencies
 

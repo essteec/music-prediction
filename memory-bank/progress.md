@@ -9,15 +9,15 @@
   - Scrapes: popularity, genre, release year, explicit flag
   - Uses: Selenium + BeautifulSoup
   - Features: Headless mode, rate limiting, browser recovery, NaN validation
-  - **Status**: ❌ TOO SLOW (12 sec/song = 136 days for full dataset)
-  - **Progress**: 3,529 songs scraped, 23 failed
+  - **Status**: ✅ COMPLETED - Successfully scraped all data
+- [x] **Scraper Development - V2 (HTTP)**: ✅ COMPLETED - HTTP-based scraper implemented
+  - **Result**: Successfully scraped entire dataset
+  - **Output**: Three CSV files for validation and cleanup
 - [x] **Genre Mapping**: Dynamic genre normalization with safe browser reuse
-- [x] **Critical Analysis**: Identified performance bottleneck, planned migration
-- [ ] **Scraper Development - V2 (HTTP)**: 🔄 IN PROGRESS - Rebuilding with requests library
-  - **Goal**: 10-50x speed improvement (1-3 sec/song)
-  - **Approach**: Direct HTTP requests, same HTML parsing logic
-  - **Strategy**: Linear scraping, manual stop control, checkpoint resumption
-  - **Phase**: Awaiting HTTP request analysis from user
+- [x] **Data Collection Complete**: ✅ ALL SCRAPING FINISHED (November 10, 2025)
+  - **songs_enhanced_full.csv**: All successful scrapes (needs validation)
+  - **failed_tracks.csv**: All failed scrapes from various causes
+  - **unknown_tracks.csv**: Successful scrapes with undetected genres
 
 ### Project Structure
 - [x] **Basic Folder Structure**: dataset/, ml/, thesis/, timeline/ created
@@ -31,14 +31,23 @@
 
 ## 🚧 In Progress
 
-### Week 1 Tasks (Oct 7-14, 2025)
-- [ ] **Dataset Specification**: Document full dataset characteristics
+### Current Phase: Data Validation & Cleaning (November 2025)
+- [ ] **Data Validation**: Clean and validate scraped data
+  - **Roadmap Created**: ✅ `ml/DATA_VALIDATION_ROADMAP.md` (comprehensive 7-day plan)
+  - **Checklist Created**: ✅ `ml/PHASE1_CHECKLIST.md` (progress tracking)
+  - **Starter Notebook**: ✅ `notebooks/01_data_profiling.ipynb` (ready to run)
+  - Fix invalid genres (NaN values in songs_enhanced_full.csv)
+  - Fix invalid years (0 values in songs_enhanced_full.csv)
+  - Analyze failed_tracks.csv to understand failure patterns
+  - Process unknown_tracks.csv (successful scrapes, undetected genres)
+  - Merge validated data into final clean dataset
+- [ ] **Dataset Specification**: Document final dataset characteristics
   - Size, features, distributions, missing values
   - Create data dictionary
 - [ ] **Reference Collection**: Gather 10 similar theses/papers
   - Focus on music prediction, lyric analysis, audio feature ML
 - [ ] **Abstract Writing**: First draft of thesis abstract
-  - Pending target variable decision
+  - Multi-target approach (valence, energy, danceability, popularity)
 
 ### Critical Decisions
 - [x] **Target Variable Selection**: ✅ FINALIZED October 10, 2025
@@ -68,12 +77,16 @@
   - Setup notebook directory
   - Create config/ for experiment parameters
 
-### Data Pipeline (Next Phase)
-- [ ] **Data Validation & Cleaning**
-  - Check for duplicates
-  - Handle missing values
-  - Remove invalid entries
-  - Document cleaning decisions
+### Data Pipeline (Current Phase - UNBLOCKED!)
+- [x] **Data Collection**: ✅ COMPLETE - All scraping finished!
+- [ ] **Data Validation & Cleaning** 🔥 IN PROGRESS
+  - [ ] Fix NaN genres in songs_enhanced_full.csv
+  - [ ] Fix 0 year values in songs_enhanced_full.csv
+  - [ ] Analyze failure patterns in failed_tracks.csv
+  - [ ] Handle unknown genres in unknown_tracks.csv
+  - [ ] Check for duplicates across all files
+  - [ ] Merge into final clean dataset
+  - [ ] Document cleaning decisions
 
 - [ ] **Exploratory Data Analysis (EDA)**
   - Jupyter notebook with visualizations
@@ -156,34 +169,29 @@
 
 ## 🐛 Known Issues
 
-### Dataset
+### Dataset - DATA QUALITY ISSUES 🔍
+- **Issue**: songs_enhanced_full.csv contains invalid data
+  - **Problem 1**: Some songs have NaN genre values
+  - **Problem 2**: Some songs have invalid year (0)
+  - **Impact**: Needs validation and cleaning before ML pipeline
+  - **Status**: 🔄 NEXT PRIORITY - Data validation phase
+  
+- **Issue**: failed_tracks.csv contains scraping failures
+  - **Impact**: Need to analyze failure patterns
+  - **Potential**: May retry or accept data loss depending on failure reasons
+  
+- **Issue**: unknown_tracks.csv has undetected genres
+  - **Impact**: Successful scrapes but genre mapping failed
+  - **Potential**: May need manual genre mapping or use alternative features
+
 - **Issue**: Main CSV file >50MB (cannot open directly in VS Code)
   - **Impact**: Need alternative tools for inspection
   - **Solution**: ✅ Use pandas chunking, command-line tools, or Jupyter (working)
 
-### Scraper - CRITICAL PERFORMANCE ISSUE 🚨
-- **Issue**: Selenium-based scraper is UNACCEPTABLY SLOW
-  - **Speed**: 12 seconds per song
-  - **Total time**: 136 days for 955K songs
-  - **Root causes**:
-    1. Full browser rendering (images, CSS, JavaScript)
-    2. Browser startup/teardown overhead
-    3. Element waiting times (5+ seconds per page)
-    4. Dynamic genre mapping with browser spawning
-  - **Impact**: ❌ Cannot finish scraping before thesis deadline
-  - **Solution**: 🔄 Migrating to HTTP-based scraping
-    - Target speed: 1-3 sec/song (10-50x improvement)
-    - Expected time: 11-33 days for full dataset
-    - Strategy: Can manually stop after 10K-50K songs (sufficient for thesis)
-  - **Status**: Phase 2 Planning - awaiting HTTP request analysis
-
-- **Issue**: Genre mapper spawned separate browser instances
-  - **Impact**: Browsers froze/crashed, causing NaN values
-  - **Solution**: ✅ Fixed - reuses same browser instance safely
-  
-- **Issue**: No validation before saving
-  - **Impact**: NaN values were being saved to CSV
-  - **Solution**: ✅ Fixed - validates metadata before saving
+### Scraper - RESOLVED ✅
+- **Previous Issue**: Selenium-based scraper too slow (12 sec/song = 136 days)
+- **Solution**: ✅ HTTP-based scraper implemented and completed
+- **Status**: ✅ ALL DATA COLLECTION COMPLETE (November 10, 2025)
 
 ### Collaboration
 - **Issue**: GitHub not yet setup
@@ -218,17 +226,24 @@
 
 ## 🎯 Next Milestone
 
-**Milestone 1: Complete Data Preparation (Target: End of Week 2-3)**
-- Dataset fully cleaned and documented
-- EDA complete with insights
-- Features engineered and ready
-- Train/test splits created
-- First baseline model trained
+**Milestone 1: Complete Data Validation & Preparation (Target: This Week)**
+- ✅ All data collected (songs_enhanced_full.csv, failed_tracks.csv, unknown_tracks.csv)
+- [ ] Validate and clean songs_enhanced_full.csv (fix NaN genres, 0 years)
+- [ ] Analyze failed_tracks.csv and unknown_tracks.csv
+- [ ] Merge into final clean dataset
+- [ ] Document final dataset characteristics
+- [ ] Create data dictionary
+
+**Milestone 2: Complete EDA and Baseline (Target: Next 2 Weeks)**
+- [ ] EDA complete with insights
+- [ ] Features engineered and ready
+- [ ] Train/test splits created
+- [ ] First baseline model trained for all 4 targets
 
 **Success Criteria**:
 - Can load and process full dataset efficiently
 - Have visualizations showing data characteristics
-- Baseline RMSE/R² established
+- Baseline RMSE/R² established for valence, energy, danceability, popularity
 - Code is in GitHub with proper documentation
 
 ## 📈 Evolution of Decisions

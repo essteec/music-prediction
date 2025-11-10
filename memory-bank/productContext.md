@@ -11,8 +11,9 @@ This project serves as a final year thesis exploring the intersection of music i
 - **Contribution**: Systematic comparison of algorithms with reproducible methodology
 
 ### Technical Problem
-- **Data Gap**: Original dataset missing key features (popularity, genre, release year, explicit flag)
-- **Prediction Challenge**: Can textual data (lyrics) enhance prediction of perceptual attributes (danceability, valence)?
+- **Data Gap**: ✅ RESOLVED - Dataset enhancement complete (November 10, 2025)
+- **Data Quality**: 🔍 IN PROGRESS - Validating scraped data (NaN genres, invalid years)
+- **Prediction Challenge**: Can textual data (lyrics) enhance prediction of perceptual attributes (danceability, valence, energy, popularity)?
 - **Model Selection**: Which algorithms work best for this specific domain?
 
 ## How It Should Work
@@ -35,27 +36,47 @@ This project serves as a final year thesis exploring the intersection of music i
 
 ### System Flow
 ```
-Raw Dataset → Data Enrichment (Scraping) → Feature Engineering → 
-Model Training (Multiple Algorithms) → Evaluation & Comparison → 
-Thesis Findings
+Raw Dataset → ✅ Data Enrichment (Scraping COMPLETE) → 
+🔍 Data Validation & Cleaning (IN PROGRESS) → 
+Feature Engineering → Model Training (4 Targets × Multiple Algorithms) → 
+Evaluation & Comparison → Thesis Findings
 ```
 
-## Target Variables Under Consideration
+## Target Variables - FINALIZED (October 10, 2025)
 
-### Option 1: Valence (Emotional Positivity)
-- **Range**: 0-1 (negative to positive emotional tone)
-- **Why Interesting**: Strong connection to lyrical content sentiment
-- **Use Case**: "Can lyrics predict how happy/sad a song feels?"
+### Multi-Target Approach: All 4 Targets
+**Decision**: Predict all 4 musical attributes using same ML pipeline
 
-### Option 2: Danceability
-- **Range**: 0-1 (suitability for dancing)
-- **Why Interesting**: Mix of rhythm, tempo, and beat strength
-- **Use Case**: "Can we predict dance-friendliness from audio + lyrics?"
+1. **Valence** (Emotional Positivity)
+   - **Range**: 0-1 (negative to positive emotional tone)
+   - **Expected R²**: 0.35-0.55
+   - **Key Features**: Lyrics + mood features
+   - **Difficulty**: Moderate
 
-### Option 3: Popularity
-- **Range**: 0-100 (current track popularity)
-- **Why Interesting**: Real-world relevance, but many external factors
-- **Use Case**: "What makes a song popular?"
+2. **Energy** (Intensity/Activity)
+   - **Range**: 0-1 (low to high energy)
+   - **Expected R²**: 0.60-0.75
+   - **Key Features**: Loudness + tempo
+   - **Difficulty**: Easy
+
+3. **Danceability** (Dance Suitability)
+   - **Range**: 0-1 (suitability for dancing)
+   - **Expected R²**: 0.50-0.65
+   - **Key Features**: Tempo + beat
+   - **Difficulty**: Moderate
+
+4. **Popularity** (Track Success)
+   - **Range**: 0-100 (current track popularity)
+   - **Expected R²**: 0.30-0.45
+   - **Key Features**: Genre + year (external factors limit prediction)
+   - **Difficulty**: Hard
+
+### Why Multi-Target?
+- **Comprehensive**: Demonstrates systematic methodology
+- **Efficient**: Build pipeline once, apply to 4 targets
+- **Risk Mitigation**: Success even if one target is challenging
+- **Rich Analysis**: Comparative insights are the research contribution
+- **Achievable**: 8-10 week timeline with traditional ML (no neural networks required)
 
 ## Key Design Goals
 1. **Academic Rigor**: Proper train/test splits, cross-validation, statistical significance

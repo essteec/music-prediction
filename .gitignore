@@ -93,6 +93,7 @@ tmp/
 
 # Specific large files
 spotify-songs-with-attributes-and-lyrics.zip
+*.pdf
 
 # Keep directory structure
 !results/
