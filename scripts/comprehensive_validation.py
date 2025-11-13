@@ -99,7 +99,7 @@ COLUMN_SPECS = {
     # Audio features - Specific ranges
     'key': {
         'type': 'int',
-        'range': (0, 11),
+        'range': (-1, 11),  # -1 = no key detected, 0-11 = pitch classes
         'null_allowed': False,
         'ml_impact': 'LOW',
         'target': False
@@ -194,13 +194,18 @@ def analyze_dataset(filepath, chunksize=50000):
             stats['range_violations'][col] = 0
     
     print(f"Analyzing: {filepath}")
-    print(f"Counting lines...")
-    total_lines = sum(1 for _ in open(filepath)) - 1
-    print(f"Total lines: {total_lines:,}\n")
+    print(f"Estimating rows (this may take a moment)...")
+    
+    # Get accurate row count using pandas (handles embedded newlines in CSV)
+    total_rows = 0
+    for chunk in pd.read_csv(filepath, chunksize=chunksize, low_memory=False):
+        total_rows += len(chunk)
+    
+    print(f"Total rows: {total_rows:,}\n")
     
     print(f"Processing in chunks of {chunksize:,}...")
-    with tqdm(total=total_lines, desc="Analyzing") as pbar:
-        for chunk in pd.read_csv(filepath, chunksize=chunksize):
+    with tqdm(total=total_rows, desc="Analyzing") as pbar:
+        for chunk in pd.read_csv(filepath, chunksize=chunksize, low_memory=False):
             stats['total_rows'] += len(chunk)
             
             # ID uniqueness and duplicates
@@ -220,42 +225,56 @@ def analyze_dataset(filepath, chunksize=50000):
             for col in ['danceability', 'energy', 'valence', 'speechiness',
                        'acousticness', 'instrumentalness', 'liveness']:
                 if col in chunk.columns:
+                    # Convert to numeric, coercing errors to NaN
+                    chunk[col] = pd.to_numeric(chunk[col], errors='coerce')
                     stats['range_violations'][col] += (
                         (chunk[col] < 0) | (chunk[col] > 1)
                     ).sum()
             
-            # Range violations - key (0-11)
+            # Range violations - key (-1 to 11)
             if 'key' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['key'] = pd.to_numeric(chunk['key'], errors='coerce')
                 stats['range_violations']['key'] += (
-                    (chunk['key'] < 0) | (chunk['key'] > 11)
+                    (chunk['key'] < -1) | (chunk['key'] > 11)
                 ).sum()
             
             # Range violations - mode (0-1)
             if 'mode' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['mode'] = pd.to_numeric(chunk['mode'], errors='coerce')
                 stats['range_violations']['mode'] += (
                     (chunk['mode'] < 0) | (chunk['mode'] > 1)
                 ).sum()
             
             # Range violations - loudness (-60 to 0)
             if 'loudness' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['loudness'] = pd.to_numeric(chunk['loudness'], errors='coerce')
                 stats['range_violations']['loudness'] += (
                     (chunk['loudness'] < -60) | (chunk['loudness'] > 0)
                 ).sum()
             
             # Range violations - tempo (20-300)
             if 'tempo' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['tempo'] = pd.to_numeric(chunk['tempo'], errors='coerce')
                 stats['range_violations']['tempo'] += (
                     (chunk['tempo'] < 20) | (chunk['tempo'] > 300)
                 ).sum()
             
             # Range violations - duration (>0)
             if 'duration_ms' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['duration_ms'] = pd.to_numeric(chunk['duration_ms'], errors='coerce')
                 stats['range_violations']['duration_ms'] += (
                     chunk['duration_ms'] <= 0
                 ).sum()
             
             # Range violations - popularity (0-100)
             if 'popularity' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['popularity'] = pd.to_numeric(chunk['popularity'], errors='coerce')
                 valid_pop = chunk['popularity'].dropna()
                 if len(valid_pop) > 0:
                     stats['range_violations']['popularity'] += (
@@ -272,6 +291,8 @@ def analyze_dataset(filepath, chunksize=50000):
             
             # Year issues
             if 'year' in chunk.columns:
+                # Convert to numeric, coercing errors to NaN
+                chunk['year'] = pd.to_numeric(chunk['year'], errors='coerce')
                 stats['year_issues']['zero'] += (chunk['year'] == 0).sum()
                 stats['year_issues']['negative'] += (chunk['year'] < 0).sum()
                 stats['year_issues']['future'] += (chunk['year'] > 2025).sum()
@@ -416,12 +437,12 @@ def generate_report(stats, output_path):
 
 if __name__ == "__main__":
     # File paths
-    data_dir = Path('../dataset/scraped')
+    data_dir = Path('../dataset')
     reports_dir = Path('../reports')
     reports_dir.mkdir(exist_ok=True)
-    
-    enhanced_path = data_dir / 'songs_enhanced_full.csv'
-    report_path = reports_dir / 'comprehensive_validation_report.txt'
+
+    enhanced_path = data_dir / 'processed/songs_ml_ready.csv' # 'raw/songs_enhanced_full.csv'
+    report_path = reports_dir / 'comprehensive_validation_report2.txt'
     
     # Run analysis
     print("Starting comprehensive validation analysis...\n")

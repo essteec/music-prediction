@@ -1,17 +1,17 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (November 10, 2025)
+## Current Sprint (November 12, 2025)
 
-### 🎉 MAJOR MILESTONE: Data Collection Complete!
+### 🎉 PHASE 1 COMPLETE: Data Cleaning Done!
 
-**Status Update (November 10, 2025)**:
-- ✅ **Scraping COMPLETE**: All data has been successfully scraped!
-- 📊 **Output Files**: 
-  - `songs_enhanced_full.csv` - All successful scrapes
-  - `failed_tracks.csv` - All failed scrapes  
-  - `unknown_tracks.csv` - Successful scrapes with undetected genres
-- � **Next Challenge**: Data validation and cleaning needed
-- ✅ **Timeline**: Back on track - major blocker resolved!
+**Status Update (November 12, 2025)**:
+- ✅ **Data Collection COMPLETE**: All scraping finished!
+- ✅ **Validation COMPLETE**: Comprehensive validation framework created
+- ✅ **Cleaning COMPLETE**: Data cleaned and validated
+- ✅ **Final Dataset**: `dataset/processed/songs_ml_ready.csv` (732,988 songs)
+- ✅ **Quality Verified**: 0 duplicates, 100% target completeness, all ranges valid
+- ✅ **EDA Notebook Created**: `notebooks/01_exploratory_data_analysis.ipynb`
+- 🔥 **Next Phase**: Run EDA, create train/test splits, build baselines
 
 ### Active Tasks - UPDATED PRIORITIES
 1. **Data Validation & Cleaning** 🔥 URGENT
@@ -91,30 +91,42 @@ This is a **methodology contribution** valuable for future music prediction rese
 ## Next Immediate Steps
 
 ### 1. Data Validation & Cleaning (THIS WEEK - TOP PRIORITY) 🔥
-**songs_enhanced_full.csv**:
+
+⚠️ **CRITICAL UPDATE (November 12, 2025)**: ML Roadmap has been corrected from waterfall to iterative approach. See `CRITICAL_CORRECTIONS.md` for full details.
+
+**Phase 1: Minimal Clean Dataset**
 - [ ] Load and inspect dataset
+- [ ] **Add language detection** (multilingual corpus)
 - [ ] Count and analyze NaN genre values
 - [ ] Count and analyze year = 0 values
-- [ ] Decide on cleaning strategy (drop, impute, or manual fix)
-- [ ] Apply cleaning transformations
-- [ ] Validate data quality
+- [ ] Remove duplicates and invalid entries
+- [ ] **CRITICAL**: Create artist-aware train/val/test splits (GroupShuffleSplit)
+- [ ] Document cleaning decisions
 
-**failed_tracks.csv**:
-- [ ] Analyze failure reasons
-- [ ] Count total failures
-- [ ] Decide: retry failed tracks or accept data loss
-- [ ] Document failure patterns
+**Phase 2: Audio-Only Baselines**
+- [ ] Scale audio features (StandardScaler)
+- [ ] Train: Mean → Linear → Ridge → XGBoost
+- [ ] Establish performance floor (RMSE ~0.15-0.20)
+- [ ] Document baseline results
 
-**unknown_tracks.csv**:
-- [ ] Count songs with unknown genres
-- [ ] Explore alternative genre detection methods
-- [ ] Decide: manual mapping, drop, or use as "Unknown" category
-- [ ] Integrate into main dataset if valuable
+**Phase 3: Lightweight Text Features**
+- [ ] Extract: word count, unique ratio, avg word length
+- [ ] **Multilingual sentiment** (cardiffnlp/twitter-xlm-roberta-base-sentiment)
+- [ ] ⚠️ **NOT TextBlob** (English-only, weak signals)
+- [ ] Retrain XGBoost, evaluate improvement
 
-**Final Output**:
-- [ ] Merge validated data into single clean CSV
-- [ ] Document final dataset statistics
-- [ ] Create data dictionary
+**Phase 4: Embedding-Based Text Features**
+- [ ] Compute embeddings **ONCE** (paraphrase-multilingual-MiniLM-L12-v2)
+- [ ] **Cache to disk** with joblib (MANDATORY)
+- [ ] Train XGBoost + LightGBM
+- [ ] Evaluate semantic improvement
+
+**Critical Rules**:
+- ✅ Use `GroupShuffleSplit` by artist_id (prevent data leakage)
+- ✅ Use multilingual sentiment model (NOT TextBlob)
+- ✅ Cache embeddings (compute once, reuse forever)
+- ✅ NO TF-IDF as primary text representation (embeddings > TF-IDF)
+- ✅ Iterate: build → train → evaluate → improve (NOT waterfall)
 
 ### 2. Finalize Target Variable Decision ✅
 - [x] Decision made: 4 targets (valence, energy, danceability, popularity)
@@ -168,29 +180,50 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 ### Feature Engineering Strategy
 
-**For Lyrics**:
-- Sentiment scores (TextBlob/VADER)
-- TF-IDF vectors (top 500-1000 features)
-- Word embeddings (average Word2Vec vectors)
-- Basic stats: word count, unique words, average word length
+**Iterative Approach** (build → validate → add):
 
-**For Audio**:
-- Use existing features as-is
-- Consider interaction terms (energy × tempo, etc.)
-- Normalize/scale appropriately
+**Phase 1: Audio Only**
+- Use existing features as-is (scaled)
+- No polynomial features initially
+- Train baselines: Linear, Ridge, XGBoost
 
-**For Metadata**:
-- One-hot encode genre
-- Normalize year
-- Binary flag for explicit
+**Phase 2: Lightweight Text**
+- Basic stats: word count, unique words, unique ratio, avg word length
+- **Multilingual sentiment**: cardiffnlp/twitter-xlm-roberta-base-sentiment
+  - Returns: negative, neutral, positive probabilities + polarity (-1 to 1)
+  - Supports: 50+ languages
+
+**Phase 3: Embeddings**
+- **Model**: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+- **Output**: 384-dimensional dense vectors
+- **Strategy**: Compute ONCE, cache with joblib
+- **Why**: Semantic understanding > word frequency (TF-IDF)
+
+**Phase 4: Metadata**
+- **Genre**: Target encoding (mean valence per genre, NOT one-hot)
+- **Year**: Normalize to [0, 1]
+- **Explicit**: Already binary
+
+**What NOT to do**:
+- ❌ TF-IDF as primary representation (only for benchmarking if curious)
+- ❌ TextBlob for sentiment (English-only)
+- ❌ One-hot encoding for genre (too many dimensions)
+- ❌ Polynomial features without testing improvement
 
 ### Evaluation Strategy
-- **Train/Validation/Test**: 70/15/15 or 80/10/10 split
-- **Cross-Validation**: 5-fold CV on training set
+- **Train/Validation/Test**: 70/15/15 split
+- **⚠️ CRITICAL**: Use `GroupShuffleSplit` by artist_id (prevent artist leakage)
+- **Cross-Validation**: GroupKFold (5 folds, grouped by artist)
 - **Metrics**: 
   - Primary: RMSE, R² (for regression)
-  - Secondary: MAE, explained variance
-  - Visualize: Scatter plots of predicted vs actual
+  - Secondary: MAE
+  - **Error Segmentation**: by language, genre, artist, valence range
+- **Visualizations**: 
+  - Predicted vs actual scatter
+  - Error distribution histogram
+  - Residual plots
+  - Feature importance (for tree models)
+- **Test Set**: Evaluate ONCE at the very end (no peeking!)
   
 ### Collaboration Plan
 **Team Division** (To be finalized):
@@ -225,6 +258,19 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 ## Recent Insights
 
+### ML Pipeline - CRITICAL CORRECTIONS APPLIED (November 12, 2025) 🚨
+- **Achievement**: Roadmap corrected from waterfall to iterative approach
+- **Key Fixes**:
+  1. ✅ Artist-aware GroupShuffleSplit (prevents data leakage)
+  2. ✅ Multilingual sentiment (XLM-RoBERTa, NOT TextBlob)
+  3. ✅ Dense embeddings > TF-IDF (semantic, compact, fast)
+  4. ✅ Embedding caching (compute once, reuse forever)
+  5. ✅ Iterative development (audio → text → embeddings → metadata)
+  6. ✅ Language detection (multilingual corpus support)
+- **Impact**: More realistic timeline, better methodology, higher quality results
+- **Documentation**: See `CRITICAL_CORRECTIONS.md` for full details
+- **Dependencies**: Updated `requirements-ml.txt` with correct libraries
+
 ### Data Collection - COMPLETE! ✅
 - **Achievement**: All scraping successfully finished (November 10, 2025)
 - **Output**: Three CSV files ready for validation
@@ -244,5 +290,8 @@ This is a **methodology contribution** valuable for future music prediction rese
 ### Project Insights
 - This is a comparison study, not just building one model
 - Need to tell a story: "which approach works best and why?"
+- **Iterative development > waterfall**: Validate continuously, avoid wasted work
+- **Multilingual support is critical**: Dataset spans 50+ languages
+- **Prevent data leakage**: Artist-aware splits are mandatory
 - Thesis should contribute methodology, not necessarily SOTA results
 - GitHub presence is important for both partners' portfolios

@@ -1,0 +1,31 @@
+# ML Pipeline Dependencies
+# Updated: November 12, 2025
+# Install with: pip install -r requirements-ml.txt
+
+# Core ML
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+lightgbm>=4.0.0
+
+# Multilingual NLP (CRITICAL - DO NOT REPLACE WITH TEXTBLOB)
+sentence-transformers>=2.2.0  # For lyric embeddings
+transformers>=4.30.0          # For multilingual sentiment
+langdetect>=1.0.9            # For language detection
+torch>=2.0.0                 # Backend for transformers
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+joblib      # For caching embeddings (MANDATORY)
+tqdm        # Progress bars
+pyyaml      # Experiment configs
+
+# Development
+jupyter
+ipykernel

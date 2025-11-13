@@ -27,10 +27,15 @@
 - **CatBoost**: Handles categorical features well (for genre encoding)
 
 #### NLP/Text Processing
-- **nltk** or **spaCy**: Text preprocessing, tokenization, stopwords
-- **gensim**: Word2Vec embeddings (if needed)
-- **TextBlob** or **VADER**: Sentiment analysis for lyrics
-- **scikit-learn TfidfVectorizer**: Text vectorization
+- **sentence-transformers**: Multilingual embeddings (PRIMARY for lyrics)
+  - Model: `paraphrase-multilingual-MiniLM-L12-v2` (384-d, 50+ languages)
+  - Fast, semantic, compact alternative to TF-IDF
+- **transformers** (HuggingFace): Multilingual sentiment analysis
+  - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+  - ⚠️ **DO NOT use TextBlob** - English-only, weak for multilingual
+- **langdetect**: Language identification for multilingual corpus
+- **nltk** or **spaCy**: Text preprocessing, tokenization
+- **scikit-learn TfidfVectorizer**: Only for small-scale benchmarking (NOT primary)
 
 #### Optional Deep Learning
 - **TensorFlow** or **PyTorch**: If exploring neural networks
@@ -117,10 +122,11 @@ scikit-learn>=1.3.0
 xgboost>=2.0.0
 lightgbm>=4.0.0
 
-# NLP
-nltk>=3.8
-spacy>=3.7
-textblob
+# NLP - CRITICAL for multilingual text
+sentence-transformers>=2.2.0  # Lyric embeddings
+transformers>=4.30.0  # Sentiment analysis
+langdetect>=1.0.9  # Language detection
+torch>=2.0.0  # Backend for transformers
 
 # Data Processing
 numpy>=1.24.0
@@ -132,7 +138,7 @@ seaborn>=0.12.0
 
 # Utilities
 tqdm  # Progress bars
-joblib  # Model persistence
+joblib  # Model persistence & caching
 pyyaml  # Config files
 
 # Jupyter
@@ -173,12 +179,20 @@ python -m ipykernel install --user --name=bitirme
   - Consider data sampling for quick experiments
 
 ### Memory Management
-- **Strategy**: Use pandas chunking for large CSV processing
-- **Example**:
+- **Strategy**: 
+  - Compute embeddings ONCE, cache to disk with `joblib`
+  - Use pandas chunking for initial CSV processing
+  - Artist-aware GroupShuffleSplit prevents data leakage
+- **Embedding Cache**:
   ```python
-  for chunk in pd.read_csv('large_file.csv', chunksize=10000):
-      process(chunk)
+  # Compute once
+  embeddings = model.encode(lyrics_list, batch_size=64)
+  joblib.dump(embeddings, 'dataset/processed/train_embeddings.pkl')
+  
+  # Reuse in future runs
+  embeddings = joblib.load('dataset/processed/train_embeddings.pkl')
   ```
+- **Avoid**: TF-IDF on 700k songs (memory-intensive, sparse)
 
 ### Browser Automation
 - **ChromeDriver**: Needs to be in PATH or specified explicitly
@@ -209,12 +223,17 @@ from sklearn.preprocessing import StandardScaler
 
 ### Model Training
 ```python
-# Common workflow
+# Common workflow with CRITICAL data split rule
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# ⚠️ CRITICAL: Artist-aware split (prevents data leakage)
+gss = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=42)
+train_idx, test_idx = next(gss.split(df, groups=df['artist_id']))
+
+X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
+X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
 
 # Model training
 model = RandomForestRegressor(random_state=42)

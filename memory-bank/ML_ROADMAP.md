@@ -1,776 +1,910 @@
 # ML Pipeline Roadmap
 
-Complete guide for implementing the machine learning pipeline for music valence prediction.
+**Iterative ML development guide for music valence prediction.**
+
+⚠️ **Key Principle**: This is an iterative loop, not a waterfall. Each phase builds incrementally on validated baselines.
 
 ## 📋 Table of Contents
 
-1. [Phase 1: Data Preparation](#phase-1-data-preparation)
-2. [Phase 2: Feature Engineering](#phase-2-feature-engineering)
-3. [Phase 3: Baseline Models](#phase-3-baseline-models)
-4. [Phase 4: Advanced Models](#phase-4-advanced-models)
-5. [Phase 5: Evaluation & Comparison](#phase-5-evaluation--comparison)
-6. [Phase 6: Analysis & Insights](#phase-6-analysis--insights)
+1. [Phase 1: Minimal Clean Dataset](#phase-1-minimal-clean-dataset)
+2. [Phase 2: Audio-Only Baselines](#phase-2-audio-only-baselines)
+3. [Phase 3: Lightweight Text Features](#phase-3-lightweight-text-features)
+4. [Phase 4: Embedding-Based Text Features](#phase-4-embedding-based-text-features)
+5. [Phase 5: Genre & Metadata Embeddings](#phase-5-genre--metadata-embeddings)
+6. [Phase 6: Final Model & Error Analysis](#phase-6-final-model--error-analysis)
+
+## 🔄 Development Loop
+
+```
+EDA → Feature → Baseline → Evaluate → Analyze → Fix → Iterate
+```
+
+**Do NOT complete all feature engineering before testing models.**
 
 ---
 
-## Phase 1: Data Preparation
+## Phase 1: Minimal Clean Dataset
 
-### 1.1 Data Loading & Inspection
+### 1.1 Data Loading & Validation
 
-**Goal**: Understand the dataset thoroughly
+**Goal**: Prepare a minimal, valid dataset for modeling
 
-**Tasks**:
-- [ ] Load full CSV efficiently (use chunking if needed)
+**Critical Tasks**:
+- [ ] Load CSV with correct encoding (handle multilingual text)
 - [ ] Document dataset size (rows, columns)
-- [ ] Check data types
-- [ ] Identify missing values
-- [ ] Check for duplicates
-
-**Code Example**:
-```python
-import pandas as pd
-
-# Load data
-df = pd.read_csv('dataset/songs_with_attributes_and_lyrics.csv')
-
-# Basic info
-print(f"Dataset shape: {df.shape}")
-print(f"Missing values:\n{df.isnull().sum()}")
-print(f"Data types:\n{df.dtypes}")
-```
-
-**Deliverable**: Jupyter notebook `01_data_inspection.ipynb`
-
-### 1.2 Exploratory Data Analysis (EDA)
-
-**Goal**: Understand distributions and relationships
-
-**Visualizations to Create**:
-- [ ] Target variable (valence) distribution
-- [ ] Feature distributions (histograms)
-- [ ] Correlation heatmap (audio features)
-- [ ] Valence by genre (boxplot)
-- [ ] Valence over time (by year)
-- [ ] Lyrics length distribution
-- [ ] Feature relationships (pairplot)
-
-**Key Questions**:
-- Is valence balanced or skewed?
-- Are there outliers?
-- Which features correlate with valence?
-- Are there missing patterns (e.g., all songs from certain year missing genre)?
-
-**Deliverable**: Jupyter notebook `02_eda.ipynb` with visualizations
-
-### 1.3 Data Cleaning
-
-**Goal**: Prepare clean dataset for modeling
-
-**Tasks**:
-- [ ] Handle missing values:
-  - Drop rows if too many missing features
-  - Impute if few missing (median for numerical, mode for categorical)
-- [ ] Remove duplicates (same track_id)
+- [ ] **Detect language distribution** (critical for multilingual handling)
 - [ ] Remove invalid entries:
   - Valence outside [0, 1]
   - Negative durations
   - Empty lyrics
-- [ ] Outlier treatment:
-  - Document extreme values
-  - Decide: keep, cap, or remove
-- [ ] Text cleaning:
-  - Handle encoding issues
-  - Remove non-lyrical text (e.g., "[Chorus]", "[Verse 1]")
-
-**Code Structure**:
-```python
-def clean_dataset(df):
-    """Clean and validate dataset"""
-    df_clean = df.copy()
-    
-    # Remove duplicates
-    df_clean = df_clean.drop_duplicates(subset=['id'])
-    
-    # Remove invalid valence
-    df_clean = df_clean[(df_clean['valence'] >= 0) & (df_clean['valence'] <= 1)]
-    
-    # Handle missing lyrics
-    df_clean = df_clean[df_clean['lyrics'].notna()]
-    df_clean = df_clean[df_clean['lyrics'].str.len() > 0]
-    
-    # ... more cleaning
-    
-    return df_clean
-```
-
-**Deliverable**: Script `dataset/scripts/data_cleaning.py`
-
----
-
-## Phase 2: Feature Engineering
-
-### 2.1 Audio Feature Engineering
-
-**Goal**: Prepare audio features for modeling
-
-**Tasks**:
-- [ ] Feature scaling:
-  - StandardScaler for features with different ranges
-  - Keep valence as-is (already 0-1)
-- [ ] Feature selection:
-  - Remove highly correlated features (correlation > 0.95)
-  - Consider PCA if needed (optional)
-- [ ] Feature interactions:
-  - Try combinations: energy × tempo, acousticness × instrumentalness
-  - Polynomial features (degree 2) for non-linear relationships
-- [ ] Feature documentation:
-  - Create data dictionary
+  - Duplicate `track_id`
+- [ ] **Group-aware split by artist** (prevent data leakage)
 
 **Code Example**:
 ```python
-from sklearn.preprocessing import StandardScaler
+import pandas as pd
+from sklearn.model_selection import GroupShuffleSplit
 
-def scale_audio_features(df):
-    """Scale audio features"""
-    audio_features = ['energy', 'loudness', 'speechiness', 
-                     'acousticness', 'instrumentalness', 
-                     'liveness', 'tempo', 'duration_ms']
-    
-    scaler = StandardScaler()
-    df[audio_features] = scaler.fit_transform(df[audio_features])
-    
-    return df, scaler
+# Load data
+df = pd.read_csv('dataset/songs_with_attributes_and_lyrics.csv')
+
+# Basic validation
+print(f"Dataset shape: {df.shape}")
+print(f"Missing values:\n{df.isnull().sum()}")
+
+# Remove invalid valence
+df = df[(df['valence'] >= 0) & (df['valence'] <= 1)]
+
+# Remove empty lyrics
+df = df[df['lyrics'].notna()]
+df = df[df['lyrics'].str.len() > 0]
+
+# Remove duplicates
+df = df.drop_duplicates(subset=['id'])
 ```
 
-**Deliverable**: Script `ml/preprocessing/audio_features.py`
-
-### 2.2 Text Feature Engineering
-
-**Goal**: Extract meaningful features from lyrics
-
-**Three Approaches to Implement**:
-
-#### Approach 1: TF-IDF (Baseline)
+**Language Detection**:
 ```python
-from sklearn.feature_extraction.text import TfidfVectorizer
+from langdetect import detect_langs
 
-def extract_tfidf_features(lyrics_series, max_features=1000):
-    """Extract TF-IDF features from lyrics"""
-    vectorizer = TfidfVectorizer(
-        max_features=max_features,
-        stop_words='english',
-        min_df=5,  # Ignore words appearing in <5 songs
-        max_df=0.7,  # Ignore words appearing in >70% songs
-        ngram_range=(1, 2)  # Unigrams and bigrams
-    )
-    
-    tfidf_matrix = vectorizer.fit_transform(lyrics_series)
-    return tfidf_matrix, vectorizer
+def detect_language(text):
+    """Detect primary language of text"""
+    try:
+        langs = detect_langs(text)
+        return langs[0].lang if langs else 'unknown'
+    except:
+        return 'unknown'
+
+# Add language column
+df['language'] = df['lyrics'].apply(detect_language)
+print(df['language'].value_counts())
 ```
 
-#### Approach 2: Sentiment Features
-```python
-from textblob import TextBlob
+**Deliverable**: Script `ml/preprocessing/data_cleaning.py`
 
-def extract_sentiment_features(lyrics):
-    """Extract sentiment scores from lyrics"""
-    blob = TextBlob(lyrics)
-    
-    return {
-        'sentiment_polarity': blob.sentiment.polarity,  # -1 to 1
-        'sentiment_subjectivity': blob.sentiment.subjectivity,  # 0 to 1
-        'word_count': len(lyrics.split()),
-        'unique_words': len(set(lyrics.lower().split())),
-        'avg_word_length': np.mean([len(word) for word in lyrics.split()])
-    }
-```
+### 1.2 Artist-Aware Data Split
 
-#### Approach 3: Word Embeddings (Advanced - Optional)
-```python
-import gensim.downloader as api
-import numpy as np
+**⚠️ CRITICAL**: Use artist-level grouping to prevent data leakage
 
-# Load pre-trained embeddings
-word2vec_model = api.load('word2vec-google-news-300')
-
-def get_embedding_vector(lyrics, model):
-    """Average word vectors for lyrics"""
-    words = lyrics.lower().split()
-    vectors = [model[word] for word in words if word in model]
-    
-    if len(vectors) > 0:
-        return np.mean(vectors, axis=0)
-    else:
-        return np.zeros(300)
-```
-
-**Text Preprocessing**:
-```python
-import re
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
-def preprocess_lyrics(lyrics):
-    """Clean and preprocess lyrics"""
-    # Lowercase
-    lyrics = lyrics.lower()
-    
-    # Remove section markers [Chorus], [Verse], etc.
-    lyrics = re.sub(r'\[.*?\]', '', lyrics)
-    
-    # Remove special characters (keep spaces and letters)
-    lyrics = re.sub(r'[^a-z\s]', '', lyrics)
-    
-    # Remove extra whitespace
-    lyrics = ' '.join(lyrics.split())
-    
-    return lyrics
-```
-
-**Deliverable**: Script `ml/preprocessing/text_features.py`
-
-### 2.3 Metadata Feature Engineering
-
-**Tasks**:
-- [ ] Genre encoding:
-  - One-hot encode if few genres (<20)
-  - Label encode + embedding if many genres
-  - Or: Target encode (mean valence per genre)
-- [ ] Year normalization:
-  - Scale or use decade bins
-- [ ] Explicit flag: already binary
-
-**Code Example**:
-```python
-def encode_genre(df):
-    """One-hot encode genre"""
-    return pd.get_dummies(df, columns=['genre'], prefix='genre')
-```
-
-**Deliverable**: Part of `ml/preprocessing/feature_engineering.py`
-
-### 2.4 Train/Val/Test Split
-
-**Goal**: Create proper data splits for evaluation
-
-**Strategy**:
-- 70% Train
-- 15% Validation (for hyperparameter tuning)
-- 15% Test (for final evaluation, touch only once)
-
-**Important**:
-- Set random seed for reproducibility
-- Consider stratified split if treating as classification
-- Ensure splits are time-aware if using temporal features
+**Why**: Songs by the same artist share style, which inflates performance if split randomly.
 
 ```python
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 
-def create_splits(X, y, random_state=42):
-    """Create train/val/test splits"""
-    # First split: 70% train, 30% temp
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.3, random_state=random_state
-    )
+def create_artist_aware_splits(df, test_size=0.15, val_size=0.15, random_state=42):
+    """
+    Create train/val/test splits grouped by artist_id
+    Prevents data leakage from artist style
+    """
+    # First split: train vs temp (val+test)
+    gss = GroupShuffleSplit(n_splits=1, test_size=(test_size + val_size), random_state=random_state)
+    train_idx, temp_idx = next(gss.split(df, groups=df['artist_id']))
     
-    # Second split: 15% val, 15% test (50-50 of the 30%)
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=random_state
-    )
+    df_train = df.iloc[train_idx]
+    df_temp = df.iloc[temp_idx]
     
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    # Second split: val vs test
+    gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=random_state)
+    val_idx, test_idx = next(gss2.split(df_temp, groups=df_temp['artist_id']))
+    
+    df_val = df_temp.iloc[val_idx]
+    df_test = df_temp.iloc[test_idx]
+    
+    print(f"Train: {len(df_train)} songs, {df_train['artist_id'].nunique()} artists")
+    print(f"Val: {len(df_val)} songs, {df_val['artist_id'].nunique()} artists")
+    print(f"Test: {len(df_test)} songs, {df_test['artist_id'].nunique()} artists")
+    
+    return df_train, df_val, df_test
 ```
 
 **Deliverable**: Script `ml/preprocessing/data_splitting.py`
 
+### 1.3 Exploratory Data Analysis (EDA)
+
+**Goal**: Understand distributions and relationships
+
+**Key Visualizations**:
+- [ ] Target variable (valence) distribution
+- [ ] Audio feature distributions
+- [ ] Correlation heatmap (audio features only)
+- [ ] Valence by genre (boxplot)
+- [ ] Valence by language (boxplot)
+- [ ] Lyrics length distribution by language
+- [ ] Year distribution
+
+**Key Questions**:
+- Is valence balanced or skewed?
+- Which audio features correlate with valence?
+- Are there language-specific valence patterns?
+- Are certain genres consistently high/low valence?
+
+**Deliverable**: Notebook `notebooks/01_data_profiling.ipynb`
+
 ---
 
-## Phase 3: Baseline Models
+## Phase 2: Audio-Only Baselines
 
-### 3.1 Simple Baselines
+### 2.1 Audio Feature Preparation
 
-**Goal**: Establish minimum performance bars
+**Goal**: Prepare only audio features for initial modeling
 
-**Models**:
-1. **Mean Predictor**: Predict average valence for all songs
-2. **Median Predictor**: Predict median valence
-3. **Linear Regression** (audio features only)
+**Audio Features to Use**:
+- `energy`, `loudness`, `speechiness`, `acousticness`
+- `instrumentalness`, `liveness`, `tempo`, `duration_ms`
+- `danceability`, `mode`, `key`
+
+**Feature Scaling**:
+```python
+from sklearn.preprocessing import StandardScaler
+
+def prepare_audio_features(df_train, df_val, df_test):
+    """Scale audio features using training statistics"""
+    audio_features = [
+        'energy', 'loudness', 'speechiness', 'acousticness',
+        'instrumentalness', 'liveness', 'tempo', 'duration_ms',
+        'danceability', 'mode', 'key'
+    ]
+    
+    scaler = StandardScaler()
+    
+    X_train = scaler.fit_transform(df_train[audio_features])
+    X_val = scaler.transform(df_val[audio_features])
+    X_test = scaler.transform(df_test[audio_features])
+    
+    return X_train, X_val, X_test, scaler
+```
+
+**No Polynomial Features**: Start simple. Only add if testing shows improvement.
+
+**Deliverable**: Script `ml/preprocessing/audio_features.py`
+
+### 2.2 Baseline Model Sequence
+
+**Fixed Order** (do not skip):
+
+1. **Mean Predictor** (sanity check)
+2. **Linear Regression** (interpretable baseline)
+3. **Ridge Regression** (regularized baseline)
+4. **XGBoost** (strong tree baseline)
 
 ```python
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import xgboost as xgb
 import numpy as np
 
-# Mean baseline
-y_pred_mean = np.full_like(y_test, y_train.mean())
-rmse_mean = np.sqrt(mean_squared_error(y_test, y_pred_mean))
-print(f"Mean Baseline RMSE: {rmse_mean:.4f}")
+# 1. Mean baseline
+y_pred_mean = np.full_like(y_val, y_train.mean())
+print(f"Mean Baseline RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_mean)):.4f}")
 
-# Simple linear regression
+# 2. Linear Regression
 lr = LinearRegression()
-lr.fit(X_train_audio, y_train)
-y_pred_lr = lr.predict(X_test_audio)
-rmse_lr = np.sqrt(mean_squared_error(y_test, y_pred_lr))
-r2_lr = r2_score(y_test, y_pred_lr)
-print(f"Linear Regression RMSE: {rmse_lr:.4f}, R²: {r2_lr:.4f}")
+lr.fit(X_train, y_train)
+y_pred_lr = lr.predict(X_val)
+print(f"Linear Regression RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_lr)):.4f}")
+print(f"Linear Regression R²: {r2_score(y_val, y_pred_lr):.4f}")
+
+# 3. Ridge Regression
+ridge = Ridge(alpha=1.0)
+ridge.fit(X_train, y_train)
+y_pred_ridge = ridge.predict(X_val)
+print(f"Ridge RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_ridge)):.4f}")
+print(f"Ridge R²: {r2_score(y_val, y_pred_ridge):.4f}")
+
+# 4. XGBoost
+xgb_model = xgb.XGBRegressor(
+    n_estimators=100,
+    learning_rate=0.05,
+    max_depth=6,
+    random_state=42
+)
+xgb_model.fit(X_train, y_train)
+y_pred_xgb = xgb_model.predict(X_val)
+print(f"XGBoost RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_xgb)):.4f}")
+print(f"XGBoost R²: {r2_score(y_val, y_pred_xgb):.4f}")
 ```
 
-**Deliverable**: Script `ml/models/baseline.py`
+**Expected Performance (Audio-Only)**:
+- Mean Baseline: RMSE ~0.25
+- Linear Regression: RMSE 0.18-0.22
+- Ridge: RMSE 0.17-0.21
+- XGBoost: RMSE 0.15-0.19
 
-### 3.2 Feature Importance Analysis
+**Deliverable**: Script `ml/models/audio_baseline.py`
 
-**Goal**: Understand which features matter
+### 2.3 Feature Importance Analysis
 
 ```python
-# For linear models: coefficient magnitudes
+# Audio feature importance from XGBoost
 feature_importance = pd.DataFrame({
-    'feature': feature_names,
-    'coefficient': lr.coef_
-}).sort_values('coefficient', key=abs, ascending=False)
-
-# For tree models: built-in importance
-feature_importance = pd.DataFrame({
-    'feature': feature_names,
-    'importance': rf.feature_importances_
+    'feature': audio_features,
+    'importance': xgb_model.feature_importances_
 }).sort_values('importance', ascending=False)
+
+print(feature_importance)
 ```
+
+**Expected Top Features**:
+1. Energy (positive correlation with valence)
+2. Danceability
+3. Acousticness (negative correlation)
+4. Mode (major vs minor key)
+
+**Deliverable**: Part of evaluation
 
 ---
 
-## Phase 4: Advanced Models
+## Phase 3: Lightweight Text Features
 
-### 4.1 Regularized Linear Models
+### 3.1 Statistical Lyric Features
 
-**Models**:
-- Ridge Regression (L2 regularization)
-- Lasso Regression (L1 regularization)
-- ElasticNet (L1 + L2)
+**Goal**: Add cheap, interpretable text features
 
+**Features to Extract** (fast, no ML needed):
 ```python
-from sklearn.linear_model import Ridge, Lasso, ElasticNet
-from sklearn.model_selection import GridSearchCV
+def extract_text_statistics(lyrics):
+    """Extract basic lyric statistics"""
+    words = lyrics.split()
+    unique_words = set(word.lower() for word in words)
+    
+    return {
+        'word_count': len(words),
+        'unique_word_count': len(unique_words),
+        'unique_ratio': len(unique_words) / max(len(words), 1),
+        'avg_word_length': np.mean([len(word) for word in words]) if words else 0,
+        'char_count': len(lyrics)
+    }
 
-# Ridge with cross-validation for alpha
-ridge = Ridge()
-param_grid = {'alpha': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]}
-ridge_cv = GridSearchCV(ridge, param_grid, cv=5, scoring='neg_mean_squared_error')
-ridge_cv.fit(X_train, y_train)
-
-print(f"Best alpha: {ridge_cv.best_params_['alpha']}")
+# Apply to all lyrics
+text_stats = df['lyrics'].apply(extract_text_statistics)
+df_text_stats = pd.DataFrame(text_stats.tolist())
 ```
 
-**Deliverable**: Script `ml/models/linear_models.py`
+**Deliverable**: Script `ml/preprocessing/text_statistics.py`
 
-### 4.2 Tree-Based Models
+### 3.2 Multilingual Sentiment Extraction
 
-**Models to Implement**:
+**⚠️ Use Multilingual Model, NOT TextBlob**
 
-#### Random Forest
+**Model**: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+
+**Why**: 
+- Supports multilingual text
+- Robust sentiment signals
+- Pre-trained on social media (informal language)
+
 ```python
-from sklearn.ensemble import RandomForestRegressor
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import numpy as np
 
-rf = RandomForestRegressor(
-    n_estimators=200,
-    max_depth=15,
-    min_samples_split=10,
-    min_samples_leaf=4,
-    random_state=42,
-    n_jobs=-1
-)
+# Load model once
+tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-xlm-roberta-base-sentiment")
+model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-xlm-roberta-base-sentiment")
 
-rf.fit(X_train, y_train)
+def extract_sentiment(text, max_length=512):
+    """Extract sentiment scores using multilingual RoBERTa"""
+    # Truncate text if too long
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length)
+    
+    with torch.no_grad():
+        outputs = model(**inputs)
+    
+    # Get probabilities for negative, neutral, positive
+    probs = torch.softmax(outputs.logits, dim=1).numpy()[0]
+    
+    return {
+        'sentiment_negative': probs[0],
+        'sentiment_neutral': probs[1],
+        'sentiment_positive': probs[2],
+        'sentiment_polarity': probs[2] - probs[0]  # Range: -1 to 1
+    }
+
+# Apply to lyrics (use batching for efficiency)
+def batch_sentiment_extraction(lyrics_list, batch_size=32):
+    """Extract sentiment in batches"""
+    results = []
+    for i in range(0, len(lyrics_list), batch_size):
+        batch = lyrics_list[i:i+batch_size]
+        batch_results = [extract_sentiment(text) for text in batch]
+        results.extend(batch_results)
+    return pd.DataFrame(results)
 ```
 
-#### XGBoost
-```python
-import xgboost as xgb
+**Deliverable**: Script `ml/preprocessing/sentiment_features.py`
 
-xgb_model = xgb.XGBRegressor(
+### 3.3 Retrain Models with Text Features
+
+**Combine**: Audio + Text Statistics + Sentiment
+
+```python
+# Prepare combined features
+X_train_combined = np.hstack([X_train_audio, X_train_text_stats, X_train_sentiment])
+X_val_combined = np.hstack([X_val_audio, X_val_text_stats, X_val_sentiment])
+
+# Retrain XGBoost
+xgb_text = xgb.XGBRegressor(n_estimators=100, learning_rate=0.05, max_depth=6, random_state=42)
+xgb_text.fit(X_train_combined, y_train)
+
+y_pred_xgb_text = xgb_text.predict(X_val_combined)
+print(f"XGBoost + Text RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_xgb_text)):.4f}")
+```
+
+**Evaluate Improvement**:
+- Compare RMSE: Audio-only vs Audio+Text
+- Check if sentiment features have high importance
+- If improvement < 0.01 RMSE, text features may not be useful
+
+**Deliverable**: Update to model training scripts
+
+---
+
+## Phase 4: Embedding-Based Text Features
+
+### 4.1 Compute & Cache Lyric Embeddings
+
+**⚠️ CRITICAL**: Compute embeddings ONCE and save to disk
+
+**Model**: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+
+**Why**:
+- Multilingual support (50+ languages)
+- Compact (384 dimensions)
+- Fast inference
+- Better than TF-IDF for semantic meaning
+
+```python
+from sentence_transformers import SentenceTransformer
+import numpy as np
+import joblib
+
+def compute_lyric_embeddings(lyrics_list, model_name='paraphrase-multilingual-MiniLM-L12-v2', batch_size=64):
+    """
+    Compute embeddings for all lyrics and save to disk
+    
+    ⚠️ Run this ONCE and cache results
+    """
+    model = SentenceTransformer(model_name)
+    
+    # Compute in batches to avoid memory issues
+    embeddings = model.encode(
+        lyrics_list,
+        batch_size=batch_size,
+        show_progress_bar=True,
+        convert_to_numpy=True
+    )
+    
+    return embeddings
+
+# Compute for all splits
+print("Computing embeddings for training set...")
+train_embeddings = compute_lyric_embeddings(df_train['lyrics'].tolist())
+
+print("Computing embeddings for validation set...")
+val_embeddings = compute_lyric_embeddings(df_val['lyrics'].tolist())
+
+print("Computing embeddings for test set...")
+test_embeddings = compute_lyric_embeddings(df_test['lyrics'].tolist())
+
+# Save to disk
+joblib.dump(train_embeddings, 'dataset/processed/train_embeddings.pkl')
+joblib.dump(val_embeddings, 'dataset/processed/val_embeddings.pkl')
+joblib.dump(test_embeddings, 'dataset/processed/test_embeddings.pkl')
+
+print(f"Embeddings shape: {train_embeddings.shape}")  # (n_samples, 384)
+```
+
+**Load Cached Embeddings**:
+```python
+# In future runs, just load
+train_embeddings = joblib.load('dataset/processed/train_embeddings.pkl')
+val_embeddings = joblib.load('dataset/processed/val_embeddings.pkl')
+test_embeddings = joblib.load('dataset/processed/test_embeddings.pkl')
+```
+
+**Deliverable**: Script `ml/preprocessing/embeddings.py`
+
+### 4.2 Train Models with Embeddings
+
+**Combine**: Audio + Text Stats + Sentiment + Embeddings
+
+```python
+# Combine all features
+X_train_full = np.hstack([X_train_audio, X_train_text_stats, X_train_sentiment, train_embeddings])
+X_val_full = np.hstack([X_val_audio, X_val_text_stats, X_val_sentiment, val_embeddings])
+
+# Train XGBoost
+xgb_full = xgb.XGBRegressor(
     n_estimators=200,
     learning_rate=0.05,
     max_depth=6,
-    subsample=0.8,
-    colsample_bytree=0.8,
     random_state=42
 )
+xgb_full.fit(X_train_full, y_train)
 
-xgb_model.fit(X_train, y_train)
-```
-
-#### LightGBM
-```python
+# Train LightGBM (faster for high-dimensional data)
 import lightgbm as lgb
 
-lgb_model = lgb.LGBMRegressor(
+lgb_full = lgb.LGBMRegressor(
     n_estimators=200,
     learning_rate=0.05,
     max_depth=6,
+    random_state=42
+)
+lgb_full.fit(X_train_full, y_train)
+
+# Evaluate both
+y_pred_xgb_full = xgb_full.predict(X_val_full)
+y_pred_lgb_full = lgb_full.predict(X_val_full)
+
+print(f"XGBoost + Embeddings RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_xgb_full)):.4f}")
+print(f"LightGBM + Embeddings RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_lgb_full)):.4f}")
+```
+
+**Why Skip TF-IDF**:
+- TF-IDF creates sparse, high-dimensional features (even with max_features=1000)
+- Embeddings are dense, semantic, and compact (384-d)
+- For 700k songs, TF-IDF is memory-intensive and slow
+- Use TF-IDF only for small-scale benchmarking if curious
+
+**Deliverable**: Script `ml/models/embedding_models.py`
+
+---
+
+## Phase 5: Genre & Metadata Embeddings
+
+### 5.1 Genre Encoding Strategy
+
+**Problem**: One-hot encoding creates high dimensionality if many genres
+
+**Solution**: Use embeddings or target encoding
+
+**Option 1: Target Encoding** (simple, effective)
+```python
+def target_encode_genre(df_train, df_val, df_test):
+    """Encode genre by mean valence"""
+    genre_means = df_train.groupby('genre')['valence'].mean()
+    
+    df_train['genre_encoded'] = df_train['genre'].map(genre_means)
+    df_val['genre_encoded'] = df_val['genre'].map(genre_means)
+    df_test['genre_encoded'] = df_test['genre'].map(genre_means)
+    
+    # Fill unknown genres with global mean
+    global_mean = df_train['valence'].mean()
+    df_train['genre_encoded'].fillna(global_mean, inplace=True)
+    df_val['genre_encoded'].fillna(global_mean, inplace=True)
+    df_test['genre_encoded'].fillna(global_mean, inplace=True)
+    
+    return df_train, df_val, df_test
+```
+
+**Option 2: Learned Embeddings** (for neural models only)
+```python
+from sklearn.preprocessing import LabelEncoder
+
+# Encode genres as integers
+le = LabelEncoder()
+genre_encoded = le.fit_transform(df['genre'])
+
+# Use in embedding layer (PyTorch example)
+import torch.nn as nn
+
+class GenreEmbedding(nn.Module):
+    def __init__(self, num_genres, embedding_dim=16):
+        super().__init__()
+        self.embedding = nn.Embedding(num_genres, embedding_dim)
+    
+    def forward(self, genre_ids):
+        return self.embedding(genre_ids)
+```
+
+**Deliverable**: Script `ml/preprocessing/metadata_features.py`
+
+### 5.2 Year Normalization
+
+```python
+def normalize_year(df):
+    """Scale year to reasonable range"""
+    df['year_normalized'] = (df['year'] - df['year'].min()) / (df['year'].max() - df['year'].min())
+    return df
+```
+
+### 5.3 Retrain with All Features
+
+**Final Feature Set**:
+- Audio features (scaled)
+- Text statistics
+- Sentiment scores
+- Lyric embeddings (384-d)
+- Genre encoding
+- Year (normalized)
+- Explicit flag
+
+```python
+# Combine all
+X_train_final = np.hstack([
+    X_train_audio,
+    X_train_text_stats,
+    X_train_sentiment,
+    train_embeddings,
+    df_train[['genre_encoded', 'year_normalized', 'explicit']].values
+])
+
+# Train final model
+final_model = lgb.LGBMRegressor(
+    n_estimators=300,
+    learning_rate=0.03,
+    max_depth=8,
     num_leaves=31,
     random_state=42
 )
-
-lgb_model.fit(X_train, y_train)
+final_model.fit(X_train_final, y_train)
 ```
 
-**Hyperparameter Tuning**:
-```python
-from sklearn.model_selection import RandomizedSearchCV
-
-param_distributions = {
-    'n_estimators': [100, 200, 300],
-    'max_depth': [5, 10, 15, 20],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4]
-}
-
-random_search = RandomizedSearchCV(
-    RandomForestRegressor(random_state=42),
-    param_distributions,
-    n_iter=20,
-    cv=5,
-    scoring='neg_mean_squared_error',
-    n_jobs=-1,
-    random_state=42
-)
-
-random_search.fit(X_train, y_train)
-```
-
-**Deliverable**: Script `ml/models/tree_models.py`
-
-### 4.3 Neural Networks (Optional)
-
-**Simple Feedforward Network**:
-```python
-from sklearn.neural_network import MLPRegressor
-
-mlp = MLPRegressor(
-    hidden_layer_sizes=(128, 64, 32),
-    activation='relu',
-    solver='adam',
-    learning_rate='adaptive',
-    max_iter=500,
-    random_state=42,
-    early_stopping=True,
-    validation_fraction=0.15
-)
-
-mlp.fit(X_train, y_train)
-```
-
-**Deliverable**: Script `ml/models/neural_models.py`
+**Deliverable**: Script `ml/models/final_model.py`
 
 ---
 
-## Phase 5: Evaluation & Comparison
+## Phase 6: Final Model & Error Analysis
 
-### 5.1 Metrics Calculation
+### 6.1 Test Set Evaluation
 
-**Standard Metrics**:
-```python
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-import numpy as np
-
-def evaluate_model(y_true, y_pred, model_name):
-    """Calculate all metrics"""
-    mse = mean_squared_error(y_true, y_pred)
-    rmse = np.sqrt(mse)
-    mae = mean_absolute_error(y_true, y_pred)
-    r2 = r2_score(y_true, y_pred)
-    
-    results = {
-        'model': model_name,
-        'RMSE': rmse,
-        'MAE': mae,
-        'R2': r2,
-        'MSE': mse
-    }
-    
-    return results
-```
-
-**Deliverable**: Script `ml/evaluation/metrics.py`
-
-### 5.2 Cross-Validation
+**⚠️ ONLY evaluate on test set ONCE**
 
 ```python
-from sklearn.model_selection import cross_val_score
-
-def cross_validate_model(model, X, y, cv=5):
-    """Perform k-fold cross-validation"""
-    # Negative MSE (sklearn convention)
-    mse_scores = -cross_val_score(
-        model, X, y, 
-        cv=cv, 
-        scoring='neg_mean_squared_error'
-    )
-    
-    rmse_scores = np.sqrt(mse_scores)
-    
-    print(f"CV RMSE: {rmse_scores.mean():.4f} (+/- {rmse_scores.std():.4f})")
-    return rmse_scores
-```
-
-### 5.3 Model Comparison
-
-**Create Comparison Table**:
-```python
-import pandas as pd
-
-results_df = pd.DataFrame([
-    evaluate_model(y_test, y_pred_lr, 'Linear Regression'),
-    evaluate_model(y_test, y_pred_ridge, 'Ridge'),
-    evaluate_model(y_test, y_pred_rf, 'Random Forest'),
-    evaluate_model(y_test, y_pred_xgb, 'XGBoost'),
+# Prepare test features
+X_test_final = np.hstack([
+    X_test_audio,
+    X_test_text_stats,
+    X_test_sentiment,
+    test_embeddings,
+    df_test[['genre_encoded', 'year_normalized', 'explicit']].values
 ])
 
-results_df = results_df.sort_values('RMSE')
-print(results_df)
+# Final prediction
+y_pred_final = final_model.predict(X_test_final)
+
+# Metrics
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_final))
+mae = mean_absolute_error(y_test, y_pred_final)
+r2 = r2_score(y_test, y_pred_final)
+
+print(f"Final Test RMSE: {rmse:.4f}")
+print(f"Final Test MAE: {mae:.4f}")
+print(f"Final Test R²: {r2:.4f}")
 ```
 
-**Deliverable**: Part of evaluation framework
+**Deliverable**: Script `ml/evaluation/final_evaluation.py`
 
----
+### 6.2 Error Analysis by Segment
 
-## Phase 6: Analysis & Insights
+**Segment Errors by**:
+1. Language
+2. Genre
+3. Artist
+4. Valence range (low/mid/high)
 
-### 6.1 Visualization
+```python
+def analyze_errors_by_segment(df_test, y_test, y_pred):
+    """Analyze errors by different segments"""
+    df_test['error'] = np.abs(y_test - y_pred)
+    df_test['prediction'] = y_pred
+    
+    # Error by language
+    error_by_language = df_test.groupby('language')['error'].agg(['mean', 'std', 'count'])
+    print("\nError by Language:")
+    print(error_by_language.sort_values('mean', ascending=False))
+    
+    # Error by genre
+    error_by_genre = df_test.groupby('genre')['error'].agg(['mean', 'std', 'count'])
+    print("\nError by Genre:")
+    print(error_by_genre.sort_values('mean', ascending=False))
+    
+    # Error by valence range
+    df_test['valence_bin'] = pd.cut(y_test, bins=[0, 0.33, 0.67, 1.0], labels=['low', 'mid', 'high'])
+    error_by_valence = df_test.groupby('valence_bin')['error'].agg(['mean', 'std', 'count'])
+    print("\nError by Valence Range:")
+    print(error_by_valence)
+    
+    # Worst predictions
+    worst_10 = df_test.nlargest(10, 'error')[['name', 'artist', 'genre', 'language', 'valence', 'prediction', 'error']]
+    print("\nWorst 10 Predictions:")
+    print(worst_10)
+    
+    return error_by_language, error_by_genre, error_by_valence
 
-**Predicted vs Actual**:
+# Run analysis
+analyze_errors_by_segment(df_test.copy(), y_test, y_pred_final)
+```
+
+**Deliverable**: Script `ml/evaluation/error_analysis.py`
+
+### 6.3 Feature Importance Analysis
+
+```python
+def analyze_feature_importance(model, feature_names):
+    """Analyze and visualize feature importance"""
+    importance_df = pd.DataFrame({
+        'feature': feature_names,
+        'importance': model.feature_importances_
+    }).sort_values('importance', ascending=False)
+    
+    # Top 20 features
+    print("\nTop 20 Features:")
+    print(importance_df.head(20))
+    
+    # Feature groups
+    audio_importance = importance_df[importance_df['feature'].isin(audio_features)]['importance'].sum()
+    text_importance = importance_df[importance_df['feature'].str.contains('text_|sentiment_|embed_')]['importance'].sum()
+    meta_importance = importance_df[importance_df['feature'].isin(['genre_encoded', 'year_normalized', 'explicit'])]['importance'].sum()
+    
+    print(f"\nFeature Group Importance:")
+    print(f"Audio: {audio_importance:.2%}")
+    print(f"Text: {text_importance:.2%}")
+    print(f"Metadata: {meta_importance:.2%}")
+    
+    return importance_df
+
+# Create feature names
+feature_names = (
+    audio_features + 
+    list(text_stat_features) + 
+    list(sentiment_features) + 
+    [f'embed_{i}' for i in range(384)] +
+    ['genre_encoded', 'year_normalized', 'explicit']
+)
+
+analyze_feature_importance(final_model, feature_names)
+```
+
+**Deliverable**: Part of evaluation
+
+### 6.4 Visualizations
+
 ```python
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_predictions(y_true, y_pred, model_name):
-    """Scatter plot of predictions vs actual"""
+def create_visualizations(y_test, y_pred, save_dir='results/figures'):
+    """Create all evaluation plots"""
+    
+    # 1. Predicted vs Actual
     plt.figure(figsize=(8, 6))
-    plt.scatter(y_true, y_pred, alpha=0.5)
-    plt.plot([0, 1], [0, 1], 'r--', lw=2)  # Perfect prediction line
+    plt.scatter(y_test, y_pred, alpha=0.3, s=10)
+    plt.plot([0, 1], [0, 1], 'r--', lw=2)
     plt.xlabel('Actual Valence')
     plt.ylabel('Predicted Valence')
-    plt.title(f'{model_name}: Predicted vs Actual')
+    plt.title('Predicted vs Actual Valence')
     plt.tight_layout()
-    plt.savefig(f'results/figures/{model_name}_predictions.png')
+    plt.savefig(f'{save_dir}/predicted_vs_actual.png', dpi=300)
     plt.close()
-```
-
-**Feature Importance**:
-```python
-def plot_feature_importance(model, feature_names, top_n=20):
-    """Plot top N important features"""
-    importance_df = pd.DataFrame({
-        'feature': feature_names,
-        'importance': model.feature_importances_
-    }).sort_values('importance', ascending=False).head(top_n)
     
-    plt.figure(figsize=(10, 6))
-    sns.barplot(data=importance_df, y='feature', x='importance')
-    plt.title('Top Feature Importances')
+    # 2. Error distribution
+    errors = y_test - y_pred
+    plt.figure(figsize=(8, 6))
+    plt.hist(errors, bins=50, edgecolor='black')
+    plt.xlabel('Prediction Error')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Prediction Errors')
+    plt.axvline(0, color='r', linestyle='--', lw=2)
     plt.tight_layout()
-    plt.savefig('results/figures/feature_importance.png')
+    plt.savefig(f'{save_dir}/error_distribution.png', dpi=300)
     plt.close()
+    
+    # 3. Residual plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(y_pred, errors, alpha=0.3, s=10)
+    plt.axhline(0, color='r', linestyle='--', lw=2)
+    plt.xlabel('Predicted Valence')
+    plt.ylabel('Residuals')
+    plt.title('Residual Plot')
+    plt.tight_layout()
+    plt.savefig(f'{save_dir}/residuals.png', dpi=300)
+    plt.close()
+
+create_visualizations(y_test, y_pred_final)
 ```
 
 **Deliverable**: Script `ml/evaluation/visualization.py`
 
-### 6.2 Error Analysis
-
-**Analyze Prediction Errors**:
-```python
-def analyze_errors(y_true, y_pred, df_test):
-    """Analyze where model fails"""
-    errors = np.abs(y_true - y_pred)
-    df_test['error'] = errors
-    
-    # Worst predictions
-    worst_predictions = df_test.nlargest(10, 'error')
-    
-    # Error by genre
-    error_by_genre = df_test.groupby('genre')['error'].mean().sort_values(ascending=False)
-    
-    return worst_predictions, error_by_genre
-```
-
-### 6.3 Statistical Testing
-
-**Compare Models Statistically**:
-```python
-from scipy import stats
-
-def compare_models(errors1, errors2):
-    """Paired t-test for model comparison"""
-    t_stat, p_value = stats.ttest_rel(errors1, errors2)
-    
-    if p_value < 0.05:
-        print(f"Models are significantly different (p={p_value:.4f})")
-    else:
-        print(f"No significant difference (p={p_value:.4f})")
-```
-
 ---
 
-## 🎯 Experiment Orchestration
+## 🎯 Model Comparison Priority
 
-### Main Experiment Runner
+**Fixed Comparison Order** (do not deviate):
 
-```python
-# ml/experiments/run_experiment.py
+1. **Audio-Only Baseline**: Linear → Ridge → XGBoost
+2. **+ Lightweight Text**: XGBoost with stats + sentiment
+3. **+ Embeddings**: XGBoost + LightGBM with embeddings
+4. **+ Metadata**: Final model with genre/year
+5. **MLP (Optional)**: Only if embeddings exist and you have time
 
-import yaml
-import joblib
-from datetime import datetime
-
-def run_experiment(config_path):
-    """Run complete ML experiment"""
-    
-    # Load config
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-    
-    # Load data
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data(config)
-    
-    # Train models
-    models = {}
-    results = []
-    
-    for model_config in config['models']:
-        print(f"\nTraining {model_config['name']}...")
-        
-        model = create_model(model_config)
-        model.fit(X_train, y_train)
-        
-        # Evaluate
-        y_pred = model.predict(X_test)
-        metrics = evaluate_model(y_test, y_pred, model_config['name'])
-        results.append(metrics)
-        
-        # Save model
-        model_path = f"results/models/{model_config['name']}_{datetime.now():%Y%m%d}.pkl"
-        joblib.dump(model, model_path)
-        
-        models[model_config['name']] = model
-    
-    # Compare results
-    results_df = pd.DataFrame(results)
-    results_df.to_csv('results/metrics/experiment_results.csv', index=False)
-    
-    print("\n=== Results ===")
-    print(results_df)
-    
-    return models, results_df
-```
-
-### Config File Example
-
-```yaml
-# ml/experiments/configs/baseline.yaml
-
-experiment_name: "Baseline Audio Only"
-random_seed: 42
-
-data:
-  features: ["audio"]  # audio, lyrics, metadata, all
-  target: "valence"
-  
-models:
-  - name: "LinearRegression"
-    type: "linear"
-    params: {}
-  
-  - name: "Ridge"
-    type: "linear"
-    params:
-      alpha: 1.0
-  
-  - name: "RandomForest"
-    type: "tree"
-    params:
-      n_estimators: 200
-      max_depth: 15
-      random_state: 42
-```
+**When to Stop**:
+- If improvement plateaus (<0.01 RMSE gain)
+- If validation performance degrades
+- If computational cost becomes prohibitive
 
 ---
 
 ## 📊 Expected Results
 
-### Baseline Performance Expectations
+### Performance Targets
 
-Based on similar research:
-
-| Model | Expected RMSE | Expected R² |
-|-------|---------------|-------------|
+| Model Configuration | Expected RMSE | Expected R² |
+|---------------------|---------------|-------------|
 | Mean Baseline | ~0.25 | 0.00 |
-| Linear Regression | 0.18-0.22 | 0.15-0.30 |
-| Ridge/Lasso | 0.17-0.21 | 0.20-0.35 |
-| Random Forest | 0.15-0.19 | 0.35-0.50 |
-| XGBoost | 0.14-0.18 | 0.40-0.55 |
+| Audio-Only (Ridge) | 0.17-0.21 | 0.20-0.35 |
+| Audio-Only (XGBoost) | 0.15-0.19 | 0.35-0.50 |
+| + Lightweight Text | 0.13-0.17 | 0.45-0.60 |
+| + Embeddings | 0.11-0.15 | 0.55-0.70 |
+| + Metadata (Final) | 0.10-0.14 | 0.60-0.75 |
 
-**Note**: These are estimates. Your results may vary!
+**Note**: Valence is inherently subjective. R² > 0.70 would be exceptional.
 
 ### Feature Importance Hypothesis
 
-**Expected Top Features for Valence**:
-1. Energy (positive correlation)
-2. Danceability (positive)
-3. Acousticness (negative)
-4. Sentiment polarity from lyrics (strong positive)
-5. Mode (major vs minor)
+**Expected Top Features**:
+1. `sentiment_polarity` (strong positive correlation)
+2. `energy` (positive)
+3. `danceability` (positive)
+4. `mode` (major key = higher valence)
+5. `acousticness` (negative)
+6. Embedding dimensions capturing emotional language
+7. `genre_encoded` (genre-specific patterns)
 
 ---
 
-## ✅ Success Checklist
+## ✅ Critical Checklist
 
-### For Each Model:
-- [ ] Train on training set
-- [ ] Tune hyperparameters on validation set
-- [ ] Evaluate on test set (only once!)
-- [ ] Perform cross-validation
-- [ ] Save model artifact
-- [ ] Record all metrics
-- [ ] Generate visualizations
-- [ ] Document findings
+### Data Integrity
+- [ ] Artist-level group split used (NO random split)
+- [ ] Language detected for all lyrics
+- [ ] No test data leakage
 
-### For Overall Project:
-- [ ] At least 3 models compared
-- [ ] Clear winner identified
-- [ ] Feature importance analyzed
-- [ ] Error patterns understood
-- [ ] Results reproducible
-- [ ] Code documented
-- [ ] Figures saved for thesis
+### Feature Engineering
+- [ ] Embeddings computed ONCE and cached
+- [ ] Multilingual sentiment model used (NOT TextBlob)
+- [ ] Features scaled using training statistics only
+
+### Model Development
+- [ ] Iterate: train → evaluate → improve → repeat
+- [ ] Validate on validation set, test on test set ONCE
+- [ ] Document performance at each iteration
+
+### Error Analysis
+- [ ] Segment errors by language, genre, artist
+- [ ] Identify systematic failure modes
+- [ ] Understand model limitations
+
+### Reproducibility
+- [ ] Random seeds set everywhere
+- [ ] Data versions tracked
+- [ ] Model artifacts saved
+- [ ] Experiment configs documented
+
+---
+
+## 🚨 Common Pitfalls to Avoid
+
+1. ❌ **Random train/test split** → Use artist-aware grouping
+2. ❌ **Using TextBlob for multilingual text** → Use XLM-RoBERTa sentiment
+3. ❌ **Computing embeddings multiple times** → Cache to disk
+4. ❌ **TF-IDF as primary text representation** → Use embeddings
+5. ❌ **Testing all models before iteration** → Build incrementally
+6. ❌ **Ignoring compute constraints** → Plan memory/time budgets
+7. ❌ **No error segmentation** → Analyze by language/genre
+8. ❌ **Overfitting to validation set** → Touch test set ONCE
+
+---
+
+## 🔧 Compute Constraints Planning
+
+### Memory Budget
+- **Embeddings**: ~700k songs × 384 dims × 4 bytes ≈ 1 GB (manageable)
+- **TF-IDF**: ~700k songs × 1000 features × 4 bytes ≈ 2.8 GB (sparse, but avoid)
+- **Recommendation**: Use embeddings, cache to disk
+
+### Time Budget
+- **Embedding computation**: ~1-2 hours for 700k songs (one-time)
+- **Sentiment extraction**: ~3-5 hours for 700k songs (one-time, batch process)
+- **Model training**: 
+  - XGBoost: 5-15 min per run
+  - LightGBM: 2-8 min per run
+  - MLP: 10-30 min per run
+
+### Storage Budget
+- **Raw data**: ~500 MB
+- **Processed features**: ~1-2 GB
+- **Model artifacts**: ~100 MB per model
+- **Total**: <5 GB (reasonable)
 
 ---
 
 ## 🎓 Thesis Integration
 
-### Sections This Work Supports
+### Methodology Chapter
+Document:
+- Artist-aware splitting rationale
+- Multilingual text handling approach
+- Feature engineering decisions
+- Model selection criteria
 
-**Methodology**:
-- Data preprocessing steps
-- Feature engineering approaches
-- Model selection rationale
-- Evaluation metrics choice
+### Experiments Chapter
+Report:
+- Iterative development process
+- Performance at each phase
+- Hyperparameter tuning results
+- Computational costs
 
-**Experiments**:
-- Model configurations
-- Hyperparameter settings
-- Training procedures
+### Results Chapter
+Present:
+- Model comparison table
+- Feature importance analysis
+- Error analysis by segment
+- Prediction visualizations
 
-**Results**:
-- Performance comparison table
-- Prediction plots
-- Feature importance charts
-- Error analysis
-
-**Discussion**:
-- Why certain models worked better
-- Role of lyrics vs audio features
-- Limitations discovered
-- Future improvements
+### Discussion Chapter
+Analyze:
+- Why embeddings outperform TF-IDF
+- Language-specific performance patterns
+- Genre effects on valence prediction
+- Limitations and future work
 
 ---
 
-**Next Steps**: Start with Phase 1 (Data Preparation) and work through sequentially. Don't skip EDA - it provides crucial insights!
+## 🔄 Iteration Strategy
+
+### Loop 1: Audio Baseline
+- Prepare audio features
+- Train Linear, Ridge, XGBoost
+- Evaluate on validation set
+- **Decision Point**: Is performance reasonable? (RMSE < 0.20)
+
+### Loop 2: Add Lightweight Text
+- Extract text statistics
+- Compute multilingual sentiment
+- Retrain XGBoost
+- **Decision Point**: Did text improve performance? (ΔRMSE > 0.01)
+
+### Loop 3: Add Embeddings
+- Compute and cache embeddings
+- Train XGBoost + LightGBM
+- Evaluate improvement
+- **Decision Point**: Are embeddings worth the cost? (ΔRMSE > 0.02)
+
+### Loop 4: Add Metadata
+- Encode genre and year
+- Train final model
+- Perform error analysis
+- **Decision Point**: Ready for test set?
+
+### Loop 5: Final Evaluation
+- Evaluate on test set ONCE
+- Create visualizations
+- Document findings
+- **Done**: Proceed to thesis writing
+
+---
+
+**Next Steps**: Start with Phase 1. Focus on getting a clean dataset with proper artist-aware splits before any modeling.
 
