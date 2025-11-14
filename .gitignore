@@ -35,8 +35,12 @@ env/
 *.json
 *.tsv
 *.parquet
+# NumPy arrays (features, models)
+*.npy  
 dataset/raw/
 dataset/processed/
+ml/features/*.npy
+ml/features/*.pkl
 !dataset/genre_mappings.csv
 
 # Model Files

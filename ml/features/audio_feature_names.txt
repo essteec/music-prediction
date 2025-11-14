@@ -1,0 +1,9 @@
+acousticness
+instrumentalness
+liveness
+speechiness
+loudness
+tempo
+duration_ms
+key
+mode

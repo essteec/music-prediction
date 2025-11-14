@@ -180,6 +180,10 @@ def analyze_dataset(filepath, chunksize=50000):
         'range_violations': {},
         'genre_issues': {'nan': 0, 'empty': 0, 'invalid': 0},
         'year_issues': {'zero': 0, 'negative': 0, 'future': 0, 'too_old': 0},
+        'encoding_issues': {
+            'key_letter_format': 0,  # C, D, E, F, G, A, B + sharps
+            'mode_text_format': 0     # Major, Minor
+        },
         'target_completeness': {
             'valence': {'complete': 0, 'missing': 0},
             'energy': {'complete': 0, 'missing': 0},
@@ -231,16 +235,25 @@ def analyze_dataset(filepath, chunksize=50000):
                         (chunk[col] < 0) | (chunk[col] > 1)
                     ).sum()
             
-            # Range violations - key (-1 to 11)
+            # Check for encoding issues BEFORE converting to numeric
+            # Key: Check for letter-based notation (C, D, E, F, G, A, B + sharps)
             if 'key' in chunk.columns:
+                # Detect letter-based keys
+                letter_keys = chunk['key'].astype(str).str.contains('[A-G]', regex=True, na=False)
+                stats['encoding_issues']['key_letter_format'] += letter_keys.sum()
+                
                 # Convert to numeric, coercing errors to NaN
                 chunk['key'] = pd.to_numeric(chunk['key'], errors='coerce')
                 stats['range_violations']['key'] += (
                     (chunk['key'] < -1) | (chunk['key'] > 11)
                 ).sum()
             
-            # Range violations - mode (0-1)
+            # Mode: Check for text notation (Major, Minor)
             if 'mode' in chunk.columns:
+                # Detect text-based modes
+                text_modes = chunk['mode'].astype(str).str.contains('Major|Minor', regex=True, case=False, na=False)
+                stats['encoding_issues']['mode_text_format'] += text_modes.sum()
+                
                 # Convert to numeric, coercing errors to NaN
                 chunk['mode'] = pd.to_numeric(chunk['mode'], errors='coerce')
                 stats['range_violations']['mode'] += (
@@ -420,16 +433,32 @@ def generate_report(stats, output_path):
         f.write(f"{'TOTAL:':<16s} {total_year_issues:>12,} ({pct_year:.2f}%)\n")
         f.write(f"\n⚠️ ACTION REQUIRED: Define strategy for handling year issues\n")
         
+        # Encoding Issues
+        f.write("\n" + "-" * 100 + "\n")
+        f.write("ENCODING INCONSISTENCIES (CRITICAL)\n")
+        f.write("-" * 100 + "\n")
+        f.write(f"Key (letter format):  {stats['encoding_issues']['key_letter_format']:>12,} rows\n")
+        f.write(f"Mode (text format):   {stats['encoding_issues']['mode_text_format']:>12,} rows\n")
+        total_encoding = sum(stats['encoding_issues'].values())
+        pct_encoding = (stats['encoding_issues']['key_letter_format'] / stats['total_rows'] * 100)
+        f.write(f"{'TOTAL:':<22s} {total_encoding:>12,} ({pct_encoding:.2f}%)\n")
+        if total_encoding > 0:
+            f.write(f"\n⚠️ CRITICAL: Mixed encoding formats detected!\n")
+            f.write(f"   - Key column has both numeric (0-11) and letter (C, D, E, ...) formats\n")
+            f.write(f"   - Mode column has both numeric (0, 1) and text (Major, Minor) formats\n")
+            f.write(f"   - ACTION REQUIRED: Standardize all to numeric format before ML\n")
+        
         # Recommendations
         f.write("\n" + "=" * 100 + "\n")
         f.write("RECOMMENDATIONS\n")
         f.write("=" * 100 + "\n")
-        f.write("1. Fix genre issues (NaN/empty values) - PRIORITY\n")
-        f.write("2. Fix year = 0 values - PRIORITY\n")
-        f.write("3. Remove duplicate rows if any\n")
-        f.write("4. Validate all range violations\n")
-        f.write("5. Ensure all target variables (valence, energy, danceability) are 100% complete\n")
-        f.write("6. Document all cleaning decisions\n")
+        f.write("1. Fix key/mode encoding inconsistencies - CRITICAL PRIORITY\n")
+        f.write("2. Fix genre issues (NaN/empty values) - PRIORITY\n")
+        f.write("3. Fix year = 0 values - PRIORITY\n")
+        f.write("4. Remove duplicate rows if any\n")
+        f.write("5. Validate all range violations\n")
+        f.write("6. Ensure all target variables (valence, energy, danceability) are 100% complete\n")
+        f.write("7. Document all cleaning decisions\n")
         f.write("=" * 100 + "\n")
     
     print(f"\n✅ Report saved to: {output_path}")
@@ -437,12 +466,12 @@ def generate_report(stats, output_path):
 
 if __name__ == "__main__":
     # File paths
-    data_dir = Path('../dataset')
-    reports_dir = Path('../reports')
+    data_dir = Path('dataset')
+    reports_dir = Path('reports')
     reports_dir.mkdir(exist_ok=True)
 
     enhanced_path = data_dir / 'processed/songs_ml_ready.csv' # 'raw/songs_enhanced_full.csv'
-    report_path = reports_dir / 'comprehensive_validation_report2.txt'
+    report_path = reports_dir / 'comprehensive_validation_report_02.txt'
     
     # Run analysis
     print("Starting comprehensive validation analysis...\n")

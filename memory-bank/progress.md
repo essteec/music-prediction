@@ -96,13 +96,51 @@
   - [ ] **⚠️ CRITICAL**: Create artist-aware train/val/test splits
   - [ ] Document cleaning decisions in final report
 
-- [ ] **Exploratory Data Analysis (EDA)**
-  - Jupyter notebook with visualizations
-  - Feature distributions (audio features)
-  - Correlation analysis (audio features ONLY initially)
-  - Target variable analysis (valence distribution)
-  - **Language distribution analysis** (multilingual corpus)
-  - Identify outliers
+- [x] **Exploratory Data Analysis (EDA)** ✅ COMPLETE (November 14, 2025)
+  - [x] Jupyter notebook created and executed (`notebooks/01_exploratory_data_analysis.ipynb`)
+  - [x] Feature distributions (all audio features)
+  - [x] Correlation analysis (audio features + all 4 targets)
+  - [x] All target variables analyzed (valence, energy, danceability, popularity)
+  - [x] Genre patterns identified
+  - [x] Year trends analyzed
+  - [x] Lyrics availability checked
+  - [x] Artist distribution examined
+  - [ ] **Language distribution analysis** (multilingual corpus) - TODO
+  - [x] Outliers already handled in cleaning phase
+
+- [x] **Data Encoding Fix** ✅ COMPLETE (November 14, 2025)
+  - [x] Discovered mixed encoding in key/mode columns (43,893 rows)
+  - [x] Updated validation script to detect encoding inconsistencies
+  - [x] Fixed clean_data.py with proper key/mode mapping (C→0, Major→1, etc.)
+  - [x] Re-ran cleaning pipeline with standardized encoding
+  - [x] Verified 0 encoding issues in final dataset
+
+- [x] **Train/Val/Test Splits** ✅ COMPLETE (November 14, 2025)
+  - [x] Created artist-aware splits using GroupShuffleSplit
+  - [x] Split ratios: 70% train / 15% val / 15% test
+  - [x] Zero artist overlap verified between splits
+  - [x] Saved to: dataset/processed/train.csv, val.csv, test.csv
+  - [x] Train: 514,123 songs | Val: 109,343 songs | Test: 109,522 songs
+
+- [x] **Audio Feature Preparation** ✅ COMPLETE (November 14, 2025)
+  - [x] Extracted 9 audio features (acousticness, instrumentalness, liveness, speechiness, loudness, tempo, duration_ms, key, mode)
+  - [x] Applied StandardScaler (fit on train, transform on val/test)
+  - [x] Fixed key/mode encoding issues (letter→numeric, Major/Minor→0/1)
+  - [x] Handled NaN values with proper numeric conversion and median imputation
+  - [x] Saved features: ml/features/X_*_audio.npy, y_*_*.npy
+  - [x] Saved scaler: ml/features/audio_scaler.pkl
+
+- [x] **Baseline Models Training** ✅ COMPLETE (November 14, 2025)
+  - [x] Trained 4 models for each of 4 targets (16 total models)
+  - [x] Models: Mean Baseline, Linear Regression, Ridge, XGBoost
+  - [x] Results saved: results/metrics/baseline_results_20251114_211319.csv
+  - [x] Key findings:
+    - Energy R² = 0.81 (XGBoost) - Excellent, audio captures intensity well
+    - Danceability R² = 0.44 (XGBoost) - Good, rhythm patterns captured
+    - Valence R² = 0.29 (XGBoost) - Moderate, needs text features
+    - Popularity R² = 0.04 (XGBoost) - Poor, external factors dominate
+  - [x] Verified no data leakage (artist splits clean, energy not in features)
+  - [x] Compared old (median imputation) vs new (proper encoding): virtually identical performance
 
 - [ ] **Feature Engineering - ITERATIVE APPROACH**
   - **Phase 1**: Audio features only (scaled, no polynomial)
@@ -113,14 +151,18 @@
   - ⚠️ **NO TF-IDF** as primary representation (only for benchmarking)
 
 ### ML Pipeline (Core Work - ITERATIVE APPROACH)
-- [ ] **Phase 1: Audio-Only Baselines**
-  - Mean predictor (sanity check)
-  - Linear regression
-  - Ridge regression
-  - XGBoost
-  - **Goal**: Establish performance floor (RMSE ~0.15-0.20)
+- [x] **Phase 1: Audio-Only Baselines** ✅ COMPLETE (November 14, 2025)
+  - [x] Mean predictor (sanity check)
+  - [x] Linear regression
+  - [x] Ridge regression
+  - [x] XGBoost
+  - [x] **Goal Achieved**: Performance floor established
+    - Energy RMSE: 0.106, R² = 0.81
+    - Valence RMSE: 0.213, R² = 0.29
+    - Danceability RMSE: 0.129, R² = 0.44
+    - Popularity RMSE: 17.08, R² = 0.04
 
-- [ ] **Phase 2: + Lightweight Text Features**
+- [ ] **Phase 2: + Lightweight Text Features** 🔥 NEXT PRIORITY
   - Add: word count, unique ratio, avg word length
   - Add: Multilingual sentiment (XLM-RoBERTa)
   - Retrain XGBoost
@@ -198,10 +240,11 @@
   - **Problem 2**: Invalid year (0 values)
   - **Problem 3**: Loudness outliers (>0 dB)
   - **Problem 4**: Tempo outliers (0 BPM)
+  - **Problem 5**: Mixed key/mode encoding (43,893 rows with letters/text)
   - **Solution**: ✅ Comprehensive validation and cleaning completed
   - **Result**: 732,988 clean songs in `dataset/processed/songs_ml_ready.csv`
-  - **Quality**: 0 duplicates, 100% target completeness, ALL range violations fixed
-  - **Status**: ✅ COMPLETE (November 12, 2025)
+  - **Quality**: 0 duplicates, 100% target completeness, ALL range violations fixed, 0 encoding issues
+  - **Status**: ✅ COMPLETE (November 14, 2025)
 
 - **Issue**: Main CSV file >50MB (cannot open directly in VS Code)
   - **Impact**: Need alternative tools for inspection
@@ -249,15 +292,17 @@
 
 ## 📊 Project Status Overview
 
-### Overall Progress: ~10% (adjusted due to scraping crisis)
+### Overall Progress: ~25%
 
 **Phase Breakdown**:
-- 🚧 Data Collection: 20% (0.37% scraped, rebuilding scraper for speed)
-- � Data Preprocessing: 0% (blocked by data collection)
-- 📋 Feature Engineering: 0% (blocked by data collection)
-- 📋 Model Training: 0% (blocked by data collection)
-- 📋 Evaluation: 0% (blocked by data collection)
-- 🚧 Thesis Writing: 5% (planning phase, paused until scraping resolved)
+- ✅ Data Collection: 100% (COMPLETE)
+- ✅ Data Preprocessing: 100% (COMPLETE - cleaning, encoding fix, EDA done)
+- ✅ Feature Engineering - Phase 1: 100% (Audio features prepared, scaled, saved)
+- ✅ Model Training - Phase 1: 100% (Audio-only baselines trained for all 4 targets)
+- 📊 Feature Engineering - Phase 2: 0% (Text features - NEXT PRIORITY)
+- 📋 Model Training - Phase 2: 0% (Audio + Text models)
+- 📋 Evaluation: 20% (Baseline metrics documented, error analysis pending)
+- 🚧 Thesis Writing: 15% (Planning complete, baseline results ready for methodology)
 
 ### Timeline Health: ⚠️ AT RISK - Critical Blocker
 - **Blocker**: Scraping performance crisis (136 days at current rate)
@@ -271,19 +316,28 @@
 
 ## 🎯 Next Milestone
 
-**Milestone 1: Complete Data Validation & Preparation** ✅ ACHIEVED! (November 12, 2025)
+**Milestone 1: Complete Data Validation & Preparation** ✅ ACHIEVED! (November 14, 2025)
 - ✅ All data collected (songs_enhanced_full.csv, failed_tracks.csv, unknown_tracks.csv)
 - ✅ Validated and cleaned songs_enhanced_full.csv
+- ✅ Fixed key/mode encoding inconsistencies (43,893 rows standardized)
 - ✅ Created final clean dataset: `dataset/processed/songs_ml_ready.csv` (732,988 songs)
-- ✅ Quality verified: 0 duplicates, 100% target completeness, ALL ranges valid
+- ✅ Quality verified: 0 duplicates, 100% target completeness, ALL ranges valid, 0 encoding issues
 - [ ] Document final dataset characteristics
 - [ ] Create data dictionary
 
-**Milestone 2: Complete EDA and Baseline (Target: Next 2 Weeks)**
-- [ ] EDA complete with insights
-- [ ] Features engineered and ready
-- [ ] Train/test splits created
-- [ ] First baseline model trained for all 4 targets
+**Milestone 2: Complete EDA and Audio-Only Baseline** ✅ ACHIEVED! (November 14, 2025)
+- ✅ EDA complete with insights (notebook executed)
+- ✅ Audio features engineered and ready (9 features, scaled, saved)
+- ✅ Artist-aware train/val/test splits created (70/15/15, zero overlap)
+- ✅ Baseline models trained for all 4 targets (Mean, Linear, Ridge, XGBoost)
+- ✅ Results documented and compared (old vs new encoding)
+- ✅ Key insights: Energy highly predictable (R²=0.81), Valence needs text (R²=0.29)
+
+**Milestone 3: Add Text Features and Improve Valence (Target: Next 1-2 Weeks)** 🔥 CURRENT
+- [ ] Extract text statistics (word count, unique ratio, etc.)
+- [ ] Compute multilingual sentiment (XLM-RoBERTa)
+- [ ] Retrain models with audio + text features
+- [ ] Target: Improve Valence R² from 0.29 → 0.45-0.60
 
 **Success Criteria**:
 - Can load and process full dataset efficiently

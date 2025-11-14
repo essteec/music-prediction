@@ -1,39 +1,50 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (November 12, 2025)
+## Current Sprint (November 14, 2025)
 
-### 🎉 PHASE 1 COMPLETE: Data Cleaning Done!
+### 🎉 PHASE 1 & 2 COMPLETE: Audio-Only Baselines Trained!
 
-**Status Update (November 12, 2025)**:
+**Status Update (November 14, 2025)**:
 - ✅ **Data Collection COMPLETE**: All scraping finished!
 - ✅ **Validation COMPLETE**: Comprehensive validation framework created
-- ✅ **Cleaning COMPLETE**: Data cleaned and validated
-- ✅ **Final Dataset**: `dataset/processed/songs_ml_ready.csv` (732,988 songs)
-- ✅ **Quality Verified**: 0 duplicates, 100% target completeness, all ranges valid
-- ✅ **EDA Notebook Created**: `notebooks/01_exploratory_data_analysis.ipynb`
-- 🔥 **Next Phase**: Run EDA, create train/test splits, build baselines
+- ✅ **Cleaning COMPLETE**: Data cleaned and validated (732,988 songs)
+- ✅ **Encoding Fix COMPLETE**: Key/mode standardized (43,893 rows fixed)
+- ✅ **Final Dataset**: `dataset/processed/songs_ml_ready.csv` - 0 duplicates, 0 encoding issues
+- ✅ **EDA COMPLETE**: `notebooks/01_exploratory_data_analysis.ipynb` executed
+- ✅ **Splits COMPLETE**: Artist-aware 70/15/15 splits (zero overlap verified)
+- ✅ **Audio Features COMPLETE**: 9 features extracted, scaled, saved
+- ✅ **Baseline Models COMPLETE**: Mean, Linear, Ridge, XGBoost trained for all 4 targets
+- ✅ **Results Validated**: Energy R²=0.81, Valence R²=0.29, Danceability R²=0.44, Popularity R²=0.04
+- 🔥 **Next Phase**: Add text features to improve Valence R² from 0.29 → 0.45-0.60
 
-### Active Tasks - UPDATED PRIORITIES
-1. **Data Validation & Cleaning** 🔥 URGENT
-   - **All 20 columns** analyzed and specified (see `ml/COLUMN_SPECIFICATIONS.md`)
-   - **4 Target Variables**: valence 🎯, energy 🎯, danceability 🎯, popularity 🎯
-   - **Known Issues**: 
-     - genre: NaN values ⚠️
-     - year: values = 0 ⚠️
-     - Range violations: need checking across all numeric columns
-   - **Roadmap**: See `ml/DATA_VALIDATION_ROADMAP.md` for detailed 7-day plan
-   - **Progress**: See `ml/PHASE1_CHECKLIST.md` for tracking
-   - **Column Specs**: See `ml/COLUMN_SPECIFICATIONS.md` for complete validation rules
-   - **Validation Script**: `scripts/comprehensive_validation.py` ready to run
-   - **Next**: Run validation script to get exact statistics
+### Active Tasks - PHASE 3: TEXT FEATURES 🔥
+
+1. **Extract Text Statistics** (NEXT - Fast, ~5 min)
+   - Word count, unique words, unique ratio, avg word length
+   - Create: `ml/preprocessing/text_statistics.py`
+   - Output: `ml/features/X_*_text_stats.npy`
    
-2. **Get 10 similar thesis for reference** (UNBLOCKED - can proceed!)
+2. **Extract Multilingual Sentiment** (HIGH PRIORITY - Slow, ~3-5 hours)
+   - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+   - Features: sentiment_negative, sentiment_neutral, sentiment_positive, sentiment_polarity
+   - Create: `ml/preprocessing/sentiment_features.py`
+   - Output: `ml/features/X_*_sentiment.npy`
+   - **Critical**: Batch processing (32 songs/batch) to avoid memory issues
+   
+3. **Retrain with Text Features** (After sentiment extraction)
+   - Combine: Audio (9) + Text Stats (5) + Sentiment (4) = 18 features
+   - Update: `ml/models/baseline_models.py` to load text features
+   - Train: XGBoost with combined features
+   - **Target**: Improve Valence R² from 0.29 → 0.40+
+   
+4. **Get 10 similar thesis for reference** (LOWER PRIORITY - can wait)
    - Need to collect academic references
    - Target: Theses on music prediction, lyric analysis, audio feature ML
    
-3. **Write abstract** (UNBLOCKED - can proceed!)
+5. **Write abstract** (LOWER PRIORITY - can wait)
    - Multi-target approach confirmed (valence, energy, danceability, popularity)
    - Needs: Clear problem statement and methodology outline
+   - Can leverage baseline results already achieved
 
 ## ✅ DECISION FINALIZED: Multi-Target Prediction
 
@@ -90,32 +101,50 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 ## Next Immediate Steps
 
-### 1. Data Validation & Cleaning (THIS WEEK - TOP PRIORITY) 🔥
+### ✅ Completed Phases
 
-⚠️ **CRITICAL UPDATE (November 12, 2025)**: ML Roadmap has been corrected from waterfall to iterative approach. See `CRITICAL_CORRECTIONS.md` for full details.
+**Phase 1: Data Understanding** ✅ DONE (November 14, 2025)
+- [x] Load and inspect dataset
+- [x] Analyze all 4 target variables (valence, energy, danceability, popularity)
+- [x] Examine audio features distributions
+- [x] Study correlations between features and targets
+- [x] Analyze genre patterns
+- [x] Investigate temporal trends (year)
+- [x] Check lyrics availability
+- [x] Review artist distribution
+- [ ] **TODO**: Add language detection (multilingual corpus)
 
-**Phase 1: Minimal Clean Dataset**
-- [ ] Load and inspect dataset
-- [ ] **Add language detection** (multilingual corpus)
-- [ ] Count and analyze NaN genre values
-- [ ] Count and analyze year = 0 values
-- [ ] Remove duplicates and invalid entries
-- [ ] **CRITICAL**: Create artist-aware train/val/test splits (GroupShuffleSplit)
-- [ ] Document cleaning decisions
+**Phase 2: Audio-Only Baselines** ✅ DONE (November 14, 2025)
+- [x] Fixed key/mode encoding (43,893 rows standardized: C→0, Major→1, etc.)
+- [x] Created artist-aware splits (GroupShuffleSplit by artist_id)
+- [x] Scaled audio features (StandardScaler fit on train)
+- [x] Trained: Mean → Linear → Ridge → XGBoost
+- [x] Established performance floor:
+  - Energy: RMSE=0.106, R²=0.81 ✅ Excellent
+  - Danceability: RMSE=0.129, R²=0.44 ✅ Good
+  - Valence: RMSE=0.213, R²=0.29 ⚠️ Needs text
+  - Popularity: RMSE=17.08, R²=0.04 ⚠️ External factors
+- [x] Documented baseline results
+- [x] Compared encoding methods (median imputation vs proper mapping - identical performance)
 
-**Phase 2: Audio-Only Baselines**
-- [ ] Scale audio features (StandardScaler)
-- [ ] Train: Mean → Linear → Ridge → XGBoost
-- [ ] Establish performance floor (RMSE ~0.15-0.20)
-- [ ] Document baseline results
+### 🔥 Current Phase
 
-**Phase 3: Lightweight Text Features**
-- [ ] Extract: word count, unique ratio, avg word length
-- [ ] **Multilingual sentiment** (cardiffnlp/twitter-xlm-roberta-base-sentiment)
+**Phase 3: Lightweight Text Features** (IN PROGRESS - November 14, 2025)
+- [ ] Extract text statistics (word count, unique ratio, avg word length, char count)
+  - Script: `ml/preprocessing/text_statistics.py`
+  - Time: ~5 minutes
+  - Output: 5 features per song
+- [ ] Extract multilingual sentiment (XLM-RoBERTa)
+  - Script: `ml/preprocessing/sentiment_features.py`
+  - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+  - Time: ~3-5 hours for 732k songs (batch processing)
+  - Output: 4 features per song (negative, neutral, positive, polarity)
 - [ ] ⚠️ **NOT TextBlob** (English-only, weak signals)
-- [ ] Retrain XGBoost, evaluate improvement
+- [ ] Retrain XGBoost with audio + text features
+- [ ] Evaluate improvement (target: ΔRMSE > 0.01 for valence)
+- [ ] **Success Criteria**: Valence R² improves from 0.29 → 0.40+
 
-**Phase 4: Embedding-Based Text Features**
+**Phase 4: Embedding-Based Text Features** (UPCOMING)
 - [ ] Compute embeddings **ONCE** (paraphrase-multilingual-MiniLM-L12-v2)
 - [ ] **Cache to disk** with joblib (MANDATORY)
 - [ ] Train XGBoost + LightGBM
@@ -256,9 +285,37 @@ This is a **methodology contribution** valuable for future music prediction rese
 - Save model artifacts with metadata
 - Version control everything except large data files
 
-## Recent Insights
+### Recent Insights
 
-### ML Pipeline - CRITICAL CORRECTIONS APPLIED (November 12, 2025) 🚨
+### Baseline Results - Audio-Only Performance (November 14, 2025) 📊
+- **Energy (R²=0.81)**: 
+  - Highly predictable from audio features (loudness, tempo correlate strongly)
+  - XGBoost RMSE=0.106, significantly better than Linear (0.121)
+  - **Insight**: Audio is objectively measurable, matches literature expectations
+  
+- **Danceability (R²=0.44)**:
+  - Moderately predictable from rhythm features
+  - Room for improvement with text/metadata
+  - **Insight**: Tempo and beat strength help, but subjective factors play role
+  
+- **Valence (R²=0.29)**:
+  - Weakest audio-only performance
+  - **Key Finding**: Needs text features! Sentiment from lyrics crucial
+  - **Target**: Improve to 0.45-0.60 with sentiment + embeddings
+  - **Insight**: Emotional positivity not fully captured by audio alone
+  
+- **Popularity (R²=0.04)**:
+  - Essentially unpredictable from audio/text
+  - **Insight**: External factors dominate (marketing, social trends, artist fame)
+  - Will document as limitation in thesis
+
+### Data Quality Achievement (November 14, 2025) ✅
+- **Mixed Encoding Discovery**: 43,893 rows (6%) had letter-based keys (C, D, E) and text modes (Major, Minor)
+- **Root Cause**: Dataset merged from multiple sources with different notation systems
+- **Fix Applied**: Proper mapping (C→0, D→2, ..., B→11, Major→1, Minor→0)
+- **Validation Enhanced**: Added encoding consistency checks to catch this earlier
+- **Impact**: Minimal on model performance (key/mode low importance), but methodology now clean for thesis
+- **Lesson**: `errors='coerce'` silently masks data quality issues - always check BEFORE conversion
 - **Achievement**: Roadmap corrected from waterfall to iterative approach
 - **Key Fixes**:
   1. ✅ Artist-aware GroupShuffleSplit (prevents data leakage)

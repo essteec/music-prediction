@@ -1,15 +1,15 @@
 """
-Investigate loudness and tempo outliers
+Investigate loudness, tempo, key, and mode outliers/inconsistencies
 """
 import pandas as pd
 import numpy as np
 
 print("=" * 80)
-print("INVESTIGATING LOUDNESS & TEMPO OUTLIERS")
+print("INVESTIGATING LOUDNESS, TEMPO, KEY & MODE OUTLIERS")
 print("=" * 80)
 
 # Read the data
-filepath = '../dataset/raw/songs_enhanced_full.csv'
+filepath = 'dataset/raw/songs_enhanced_full.csv'
 print(f"\nReading: {filepath}")
 print("This may take a moment...\n")
 
@@ -93,6 +93,75 @@ print(f"  Min:    {normal_tempo['tempo'].min():.2f} BPM")
 print(f"  Max:    {normal_tempo['tempo'].max():.2f} BPM")
 print(f"  Mean:   {normal_tempo['tempo'].mean():.2f} BPM")
 print(f"  Median: {normal_tempo['tempo'].median():.2f} BPM")
+
+# Normal key values
+key_numeric = pd.to_numeric(df['key'], errors='coerce')
+normal_key = key_numeric[(key_numeric >= -1) & (key_numeric <= 11)]
+print(f"\nNormal Key ({len(normal_key)} rows, numeric -1 to 11):")
+print(f"  Unique values: {sorted(normal_key.dropna().unique())}")
+print(f"  Distribution:")
+print(normal_key.value_counts().sort_index())
+
+# Normal mode values
+mode_numeric = pd.to_numeric(df['mode'], errors='coerce')
+normal_mode = mode_numeric[(mode_numeric >= 0) & (mode_numeric <= 1)]
+print(f"\nNormal Mode ({len(normal_mode)} rows, numeric 0-1):")
+print(f"  Unique values: {sorted(normal_mode.dropna().unique())}")
+print(f"  Distribution:")
+print(normal_mode.value_counts().sort_index())
+
+# KEY INVESTIGATION
+print("\n" + "-" * 80)
+print("KEY ENCODING INVESTIGATION (Expected: -1 to 11, all numeric)")
+print("-" * 80)
+
+print(f"\nKey column dtype: {df['key'].dtype}")
+print(f"Total rows: {len(df)}")
+
+# Check for non-numeric values
+key_series = df['key'].astype(str)
+non_numeric_key = ~key_series.str.match(r'^-?\d+\.?\d*$', na=False)
+non_numeric_key_rows = df[non_numeric_key]
+
+print(f"\nNon-numeric key values: {len(non_numeric_key_rows)}")
+if len(non_numeric_key_rows) > 0:
+    print(f"\nUnique non-numeric key values:")
+    print(non_numeric_key_rows['key'].value_counts())
+
+# Convert to numeric to check range
+key_numeric = pd.to_numeric(df['key'], errors='coerce')
+key_outliers = key_numeric[(key_numeric < -1) | (key_numeric > 11)]
+print(f"\nNumeric key outliers (outside -1 to 11): {len(key_outliers)}")
+
+if len(key_outliers) > 0:
+    print(f"\nOutlier values:")
+    print(key_outliers.value_counts().head(20))
+
+# MODE INVESTIGATION
+print("\n" + "-" * 80)
+print("MODE ENCODING INVESTIGATION (Expected: 0 or 1, all numeric)")
+print("-" * 80)
+
+print(f"\nMode column dtype: {df['mode'].dtype}")
+
+# Check for non-numeric values
+mode_series = df['mode'].astype(str)
+non_numeric_mode = ~mode_series.str.match(r'^-?\d+\.?\d*$', na=False)
+non_numeric_mode_rows = df[non_numeric_mode]
+
+print(f"\nNon-numeric mode values: {len(non_numeric_mode_rows)}")
+if len(non_numeric_mode_rows) > 0:
+    print(f"\nUnique non-numeric mode values:")
+    print(non_numeric_mode_rows['mode'].value_counts())
+
+# Convert to numeric to check range
+mode_numeric = pd.to_numeric(df['mode'], errors='coerce')
+mode_outliers = mode_numeric[(mode_numeric < 0) | (mode_numeric > 1)]
+print(f"\nNumeric mode outliers (outside 0 to 1): {len(mode_outliers)}")
+
+if len(mode_outliers) > 0:
+    print(f"\nOutlier values:")
+    print(mode_outliers.value_counts().head(20))
 
 print("\n" + "=" * 80)
 print("INVESTIGATION COMPLETE")

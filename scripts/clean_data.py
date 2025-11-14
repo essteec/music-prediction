@@ -7,6 +7,7 @@ Actions:
 2. Clip loudness 0-1 dB to 0 dB
 3. Remove songs with loudness > 1 dB
 4. Remove songs with invalid year (3 rows)
+5. Standardize key/mode encoding (43,893 rows have mixed formats)
 
 Total expected removals: ~280 rows
 Final dataset: ~733,114 rows
@@ -20,8 +21,8 @@ print("DATA CLEANING SCRIPT")
 print("=" * 80)
 
 # Paths
-input_file = Path('../dataset/raw/songs_enhanced_full.csv')
-output_file = Path('../dataset/processed/songs_ml_ready.csv')
+input_file = Path('dataset/raw/songs_enhanced_full.csv')
+output_file = Path('dataset/processed/songs_ml_ready.csv')
 output_file.parent.mkdir(exist_ok=True)
 
 # Read data
@@ -77,6 +78,89 @@ df = df[~year_invalid]
 print(f"After removal: {len(df):,} rows")
 removed_log.append(f"Invalid year: {removed_year} rows removed")
 
+# STEP 4: Standardize key/mode encoding
+print("\n" + "-" * 80)
+print("STEP 4: Standardize key and mode encoding")
+print("-" * 80)
+
+# Key: Convert letter notation to numeric (0-11)
+key_mapping = {
+    'C': 0, 'C#': 1, 'Db': 1,
+    'D': 2, 'D#': 3, 'Eb': 3,
+    'E': 4,
+    'F': 5, 'F#': 6, 'Gb': 6,
+    'G': 7, 'G#': 8, 'Ab': 8,
+    'A': 9, 'A#': 10, 'Bb': 10,
+    'B': 11
+}
+
+# Check current encoding
+letter_keys = df['key'].astype(str).str.contains('[A-G]', regex=True, na=False)
+text_modes = df['mode'].astype(str).str.contains('Major|Minor', regex=True, case=False, na=False)
+print(f"Key - Letter format: {letter_keys.sum():,} rows")
+print(f"Mode - Text format: {text_modes.sum():,} rows")
+
+# Convert key: letter → numeric
+def convert_key(value):
+    """Convert key to numeric format (0-11, or -1 for unknown)"""
+    if pd.isna(value):
+        return -1
+    
+    # If already numeric, return as int
+    try:
+        num_val = float(value)
+        if num_val == num_val:  # Check not NaN
+            return int(num_val)
+    except (ValueError, TypeError):
+        pass
+    
+    # Convert letter notation
+    value_str = str(value).strip()
+    if value_str in key_mapping:
+        return key_mapping[value_str]
+    
+    # Unknown/invalid
+    return -1
+
+# Convert mode: text → numeric
+def convert_mode(value):
+    """Convert mode to numeric format (0=minor, 1=major, -1=unknown)"""
+    if pd.isna(value):
+        return -1
+    
+    # If already numeric, return as int
+    try:
+        num_val = float(value)
+        if num_val == num_val:  # Check not NaN
+            return int(num_val)
+    except (ValueError, TypeError):
+        pass
+    
+    # Convert text notation
+    value_str = str(value).strip().lower()
+    if value_str in ['major', '1', '1.0']:
+        return 1
+    elif value_str in ['minor', '0', '0.0']:
+        return 0
+    
+    # Unknown/invalid
+    return -1
+
+# Apply conversions
+print("Converting key encoding...")
+df['key'] = df['key'].apply(convert_key)
+print("Converting mode encoding...")
+df['mode'] = df['mode'].apply(convert_mode)
+
+# Verify conversion
+letter_keys_after = df['key'].astype(str).str.contains('[A-G]', regex=True, na=False)
+text_modes_after = df['mode'].astype(str).str.contains('Major|Minor', regex=True, case=False, na=False)
+print(f"After conversion - Letter keys: {letter_keys_after.sum()} (should be 0)")
+print(f"After conversion - Text modes: {text_modes_after.sum()} (should be 0)")
+
+standardized_count = letter_keys.sum() + text_modes.sum()
+removed_log.append(f"Key/mode standardized: {standardized_count} rows converted to numeric")
+
 # FINAL STATISTICS
 print("\n" + "=" * 80)
 print("CLEANING COMPLETE")
@@ -104,6 +188,10 @@ print(f"Invalid year: {((df['year'] == 0) | (df['year'] < 1900) | (df['year'] > 
 print(f"Loudness range: [{df['loudness'].min():.2f}, {df['loudness'].max():.2f}] (should be [-60, 0])")
 print(f"Tempo range: [{df['tempo'].min():.2f}, {df['tempo'].max():.2f}] (should be [20, 300])")
 print(f"Year range: [{df['year'].min()}, {df['year'].max()}] (should be [1900, 2025])")
+print(f"Key range: [{df['key'].min()}, {df['key'].max()}] (should be [-1, 11])")
+print(f"Mode range: [{df['mode'].min()}, {df['mode'].max()}] (should be [-1, 1])")
+print(f"Key encoding: {df['key'].dtype} (should be int)")
+print(f"Mode encoding: {df['mode'].dtype} (should be int)")
 
 print("\n" + "=" * 80)
 print("✅ ALL DONE!")
