@@ -77,5 +77,5 @@
         - XGBoost
     - results saved to results/metrics/baseline_results_20251114_021007.csv
 
-- we repeat above after realizing inconsistencies in key and mode columns
+- we repeated above after realizing inconsistencies in key and mode columns
 

@@ -15,7 +15,7 @@ print("ARTIST-AWARE DATA SPLITTING")
 print("=" * 80)
 
 # Paths
-data_path = Path('../../dataset/processed/songs_ml_ready.csv')
+data_path = Path('../../dataset/processed/english_ml_ready.csv')
 output_dir = Path('../../dataset/processed')
 output_dir.mkdir(exist_ok=True)
 

@@ -30,9 +30,8 @@ EDA → Feature → Baseline → Evaluate → Analyze → Fix → Iterate
 **Goal**: Prepare a minimal, valid dataset for modeling
 
 **Critical Tasks**:
-- [ ] Load CSV with correct encoding (handle multilingual text)
+- [ ] Load CSV with correct encoding
 - [ ] Document dataset size (rows, columns)
-- [ ] **Detect language distribution** (critical for multilingual handling)
 - [ ] Remove invalid entries:
   - Valence outside [0, 1]
   - Negative durations
@@ -61,23 +60,6 @@ df = df[df['lyrics'].str.len() > 0]
 
 # Remove duplicates
 df = df.drop_duplicates(subset=['id'])
-```
-
-**Language Detection**:
-```python
-from langdetect import detect_langs
-
-def detect_language(text):
-    """Detect primary language of text"""
-    try:
-        langs = detect_langs(text)
-        return langs[0].lang if langs else 'unknown'
-    except:
-        return 'unknown'
-
-# Add language column
-df['language'] = df['lyrics'].apply(detect_language)
-print(df['language'].value_counts())
 ```
 
 **Deliverable**: Script `ml/preprocessing/data_cleaning.py`
@@ -128,14 +110,13 @@ def create_artist_aware_splits(df, test_size=0.15, val_size=0.15, random_state=4
 - [ ] Audio feature distributions
 - [ ] Correlation heatmap (audio features only)
 - [ ] Valence by genre (boxplot)
-- [ ] Valence by language (boxplot)
-- [ ] Lyrics length distribution by language
+- [ ] Lyrics length distribution
 - [ ] Year distribution
 
 **Key Questions**:
 - Is valence balanced or skewed?
 - Which audio features correlate with valence?
-- Are there language-specific valence patterns?
+- Are there genre-specific valence patterns?
 - Are certain genres consistently high/low valence?
 
 **Deliverable**: Notebook `notebooks/01_data_profiling.ipynb`
@@ -282,53 +263,41 @@ df_text_stats = pd.DataFrame(text_stats.tolist())
 
 **Deliverable**: Script `ml/preprocessing/text_statistics.py`
 
-### 3.2 Multilingual Sentiment Extraction
+### 3.2 Sentiment Extraction
 
-**⚠️ Use Multilingual Model, NOT TextBlob**
+**⚠️ Use TextBlob for English Songs**
 
-**Model**: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+**Model**: `TextBlob`
 
 **Why**: 
-- Supports multilingual text
-- Robust sentiment signals
-- Pre-trained on social media (informal language)
+- Simple and effective for English text
+- Fast processing
+- Provides polarity and subjectivity scores
 
 ```python
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
+from textblob import TextBlob
 import numpy as np
 
-# Load model once
-tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-xlm-roberta-base-sentiment")
-model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-xlm-roberta-base-sentiment")
+def extract_sentiment(text):
+    """Extract sentiment scores using TextBlob"""
+    try:
+        blob = TextBlob(text)
+        polarity = blob.sentiment.polarity  # Range: -1 to 1
+        subjectivity = blob.sentiment.subjectivity  # Range: 0 to 1
+        
+        return {
+            'sentiment_polarity': polarity,
+            'sentiment_subjectivity': subjectivity
+        }
+    except:
+        return {
+            'sentiment_polarity': 0.0,
+            'sentiment_subjectivity': 0.0
+        }
 
-def extract_sentiment(text, max_length=512):
-    """Extract sentiment scores using multilingual RoBERTa"""
-    # Truncate text if too long
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length)
-    
-    with torch.no_grad():
-        outputs = model(**inputs)
-    
-    # Get probabilities for negative, neutral, positive
-    probs = torch.softmax(outputs.logits, dim=1).numpy()[0]
-    
-    return {
-        'sentiment_negative': probs[0],
-        'sentiment_neutral': probs[1],
-        'sentiment_positive': probs[2],
-        'sentiment_polarity': probs[2] - probs[0]  # Range: -1 to 1
-    }
-
-# Apply to lyrics (use batching for efficiency)
-def batch_sentiment_extraction(lyrics_list, batch_size=32):
-    """Extract sentiment in batches"""
-    results = []
-    for i in range(0, len(lyrics_list), batch_size):
-        batch = lyrics_list[i:i+batch_size]
-        batch_results = [extract_sentiment(text) for text in batch]
-        results.extend(batch_results)
-    return pd.DataFrame(results)
+# Apply to lyrics
+sentiment_features = df['lyrics'].apply(extract_sentiment)
+df_sentiment = pd.DataFrame(sentiment_features.tolist())
 ```
 
 **Deliverable**: Script `ml/preprocessing/sentiment_features.py`
@@ -365,10 +334,10 @@ print(f"XGBoost + Text RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_xgb_text)
 
 **⚠️ CRITICAL**: Compute embeddings ONCE and save to disk
 
-**Model**: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+**Model**: `sentence-transformers/all-MiniLM-L6-v2` (English optimized)
 
 **Why**:
-- Multilingual support (50+ languages)
+- Optimized for English text
 - Compact (384 dimensions)
 - Fast inference
 - Better than TF-IDF for semantic meaning
@@ -378,7 +347,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import joblib
 
-def compute_lyric_embeddings(lyrics_list, model_name='paraphrase-multilingual-MiniLM-L12-v2', batch_size=64):
+def compute_lyric_embeddings(lyrics_list, model_name='all-MiniLM-L6-v2', batch_size=64):
     """
     Compute embeddings for all lyrics and save to disk
     
@@ -599,21 +568,15 @@ print(f"Final Test R²: {r2:.4f}")
 ### 6.2 Error Analysis by Segment
 
 **Segment Errors by**:
-1. Language
-2. Genre
-3. Artist
-4. Valence range (low/mid/high)
+1. Genre
+2. Artist
+3. Valence range (low/mid/high)
 
 ```python
 def analyze_errors_by_segment(df_test, y_test, y_pred):
     """Analyze errors by different segments"""
     df_test['error'] = np.abs(y_test - y_pred)
     df_test['prediction'] = y_pred
-    
-    # Error by language
-    error_by_language = df_test.groupby('language')['error'].agg(['mean', 'std', 'count'])
-    print("\nError by Language:")
-    print(error_by_language.sort_values('mean', ascending=False))
     
     # Error by genre
     error_by_genre = df_test.groupby('genre')['error'].agg(['mean', 'std', 'count'])
@@ -627,11 +590,11 @@ def analyze_errors_by_segment(df_test, y_test, y_pred):
     print(error_by_valence)
     
     # Worst predictions
-    worst_10 = df_test.nlargest(10, 'error')[['name', 'artist', 'genre', 'language', 'valence', 'prediction', 'error']]
+    worst_10 = df_test.nlargest(10, 'error')[['name', 'artist', 'genre', 'valence', 'prediction', 'error']]
     print("\nWorst 10 Predictions:")
     print(worst_10)
     
-    return error_by_language, error_by_genre, error_by_valence
+    return error_by_genre, error_by_valence
 
 # Run analysis
 analyze_errors_by_segment(df_test.copy(), y_test, y_pred_final)
@@ -792,7 +755,7 @@ create_visualizations(y_test, y_pred_final)
 - [ ] Document performance at each iteration
 
 ### Error Analysis
-- [ ] Segment errors by language, genre, artist
+- [ ] Segment errors by genre, artist
 - [ ] Identify systematic failure modes
 - [ ] Understand model limitations
 
@@ -807,13 +770,12 @@ create_visualizations(y_test, y_pred_final)
 ## 🚨 Common Pitfalls to Avoid
 
 1. ❌ **Random train/test split** → Use artist-aware grouping
-2. ❌ **Using TextBlob for multilingual text** → Use XLM-RoBERTa sentiment
-3. ❌ **Computing embeddings multiple times** → Cache to disk
-4. ❌ **TF-IDF as primary text representation** → Use embeddings
-5. ❌ **Testing all models before iteration** → Build incrementally
-6. ❌ **Ignoring compute constraints** → Plan memory/time budgets
-7. ❌ **No error segmentation** → Analyze by language/genre
-8. ❌ **Overfitting to validation set** → Touch test set ONCE
+2. ❌ **Computing embeddings multiple times** → Cache to disk
+3. ❌ **TF-IDF as primary text representation** → Use embeddings
+4. ❌ **Testing all models before iteration** → Build incrementally
+5. ❌ **Ignoring compute constraints** → Plan memory/time budgets
+6. ❌ **No error segmentation** → Analyze by genre
+7. ❌ **Overfitting to validation set** → Touch test set ONCE
 
 ---
 
@@ -825,8 +787,8 @@ create_visualizations(y_test, y_pred_final)
 - **Recommendation**: Use embeddings, cache to disk
 
 ### Time Budget
-- **Embedding computation**: ~1-2 hours for 700k songs (one-time)
-- **Sentiment extraction**: ~3-5 hours for 700k songs (one-time, batch process)
+- **Embedding computation**: ~30-60 min for English songs (one-time)
+- **Sentiment extraction**: ~10-20 min with TextBlob (one-time, batch process)
 - **Model training**: 
   - XGBoost: 5-15 min per run
   - LightGBM: 2-8 min per run
@@ -845,7 +807,6 @@ create_visualizations(y_test, y_pred_final)
 ### Methodology Chapter
 Document:
 - Artist-aware splitting rationale
-- Multilingual text handling approach
 - Feature engineering decisions
 - Model selection criteria
 
@@ -866,7 +827,6 @@ Present:
 ### Discussion Chapter
 Analyze:
 - Why embeddings outperform TF-IDF
-- Language-specific performance patterns
 - Genre effects on valence prediction
 - Limitations and future work
 

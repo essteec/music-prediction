@@ -470,8 +470,8 @@ if __name__ == "__main__":
     reports_dir = Path('reports')
     reports_dir.mkdir(exist_ok=True)
 
-    enhanced_path = data_dir / 'processed/songs_ml_ready.csv' # 'raw/songs_enhanced_full.csv'
-    report_path = reports_dir / 'comprehensive_validation_report_02.txt'
+    enhanced_path = data_dir / 'processed/english_ml_ready.csv' # 'raw/songs_enhanced_full.csv'
+    report_path = reports_dir / 'comprehensive_validation_english_report_01.txt'
     
     # Run analysis
     print("Starting comprehensive validation analysis...\n")
