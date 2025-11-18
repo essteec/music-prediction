@@ -105,7 +105,7 @@
   - [x] Year trends analyzed
   - [x] Lyrics availability checked
   - [x] Artist distribution examined
-  - [ ] **Language distribution analysis** (multilingual corpus) - TODO
+  - [x] **Using English-only dataset** (filtered from full dataset)
   - [x] Outliers already handled in cleaning phase
 
 - [x] **Data Encoding Fix** ✅ COMPLETE (November 14, 2025)
@@ -145,7 +145,7 @@
 - [ ] **Feature Engineering - ITERATIVE APPROACH**
   - **Phase 1**: Audio features only (scaled, no polynomial)
   - **Phase 2**: Lightweight text features (word count, unique ratio, avg word length)
-  - **Phase 3**: Multilingual sentiment (XLM-RoBERTa, NOT TextBlob)
+  - **Phase 3**: Sentiment analysis (TextBlob for English)
   - **Phase 4**: Lyric embeddings (compute ONCE, cache to disk)
   - **Phase 5**: Genre & metadata (target encoding, NOT one-hot)
   - ⚠️ **NO TF-IDF** as primary representation (only for benchmarking)
@@ -164,12 +164,12 @@
 
 - [ ] **Phase 2: + Lightweight Text Features** 🔥 NEXT PRIORITY
   - Add: word count, unique ratio, avg word length
-  - Add: Multilingual sentiment (XLM-RoBERTa)
+  - Add: Sentiment (TextBlob for English)
   - Retrain XGBoost
   - **Goal**: Evaluate text improvement (ΔRMSE > 0.01?)
 
 - [ ] **Phase 3: + Embeddings**
-  - Compute embeddings ONCE (paraphrase-multilingual-MiniLM-L12-v2)
+  - Compute embeddings ONCE (all-MiniLM-L6-v2 for English)
   - Cache to disk with joblib
   - Train XGBoost + LightGBM
   - **Goal**: Semantic text understanding (ΔRMSE > 0.02?)
@@ -182,14 +182,14 @@
 
 - [ ] **Phase 5: Final Evaluation & Analysis**
   - Test set evaluation (ONCE)
-  - Error analysis by language/genre/artist
+  - Error analysis by genre/artist
   - Feature importance analysis
   - Visualizations for thesis
 
 - [ ] **Evaluation Framework**
   - Artist-aware cross-validation (GroupKFold)
   - Metrics: RMSE, MAE, R²
-  - Error segmentation (language, genre, valence range)
+  - Error segmentation (genre, valence range)
   - Statistical significance testing
 
 ### Documentation & Thesis
@@ -256,18 +256,13 @@
   - **Impact**: Inflates performance due to shared style
   - **Solution**: ✅ Use GroupShuffleSplit by artist_id (MANDATORY)
   
-- **Issue**: Multilingual text handling
-  - **Problem**: TextBlob is English-only, dataset is multilingual
-  - **Impact**: Sentiment features will be incorrect/missing for non-English
-  - **Solution**: ✅ Use `cardiffnlp/twitter-xlm-roberta-base-sentiment` (MANDATORY)
-  
 - **Issue**: TF-IDF computational cost
   - **Problem**: 700k songs × 1000 features = memory-intensive, slow training
   - **Impact**: Training bottleneck, sparse representations
-  - **Solution**: ✅ Use dense embeddings (paraphrase-multilingual-MiniLM-L12-v2)
+  - **Solution**: ✅ Use dense embeddings (all-MiniLM-L6-v2 for English)
   
 - **Issue**: Embedding recomputation waste
-  - **Problem**: Computing embeddings for 700k songs takes hours
+  - **Problem**: Computing embeddings for songs takes time
   - **Impact**: Wasted time if recomputed each experiment
   - **Solution**: ✅ Cache embeddings to disk with joblib (MANDATORY)
   
@@ -335,7 +330,7 @@
 
 **Milestone 3: Add Text Features and Improve Valence (Target: Next 1-2 Weeks)** 🔥 CURRENT
 - [ ] Extract text statistics (word count, unique ratio, etc.)
-- [ ] Compute multilingual sentiment (XLM-RoBERTa)
+- [ ] Compute sentiment with TextBlob (fast for English)
 - [ ] Retrain models with audio + text features
 - [ ] Target: Improve Valence R² from 0.29 → 0.45-0.60
 

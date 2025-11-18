@@ -17,14 +17,14 @@ gss = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=42)
 train_idx, test_idx = next(gss.split(df, groups=df['artist_id']))
 ```
 
-### 2. **Multilingual Text Handling** ✅ FIXED
-**Problem**: TextBlob is English-only, our dataset is multilingual  
-**Impact**: Sentiment features incorrect/missing for non-English songs  
-**Solution**: Use `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+### 2. **Text Sentiment Analysis** ✅ FIXED
+**Problem**: Need efficient sentiment extraction for English lyrics  
+**Impact**: Sentiment features are critical for valence prediction  
+**Solution**: Use `TextBlob` for English-only dataset
 
 **Dependencies**:
 ```bash
-pip install transformers torch langdetect
+pip install textblob
 ```
 
 ### 3. **TF-IDF Computational Cost** ✅ FIXED
@@ -32,10 +32,10 @@ pip install transformers torch langdetect
 **Impact**: Slow training, sparse representations  
 **Solution**: Use dense embeddings as primary text representation
 
-**Primary Model**: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+**Primary Model**: `sentence-transformers/all-MiniLM-L6-v2`
 - Compact: 384 dimensions (vs 1000+ for TF-IDF)
 - Semantic: Captures meaning, not just word frequency
-- Multilingual: 50+ languages supported
+- Optimized for English text
 
 **Dependencies**:
 ```bash
@@ -72,23 +72,16 @@ Phase 4: + Metadata → Final model
 Phase 5: Test set evaluation ONCE → Error analysis
 ```
 
-### 6. **Language Detection Missing** ✅ FIXED
-**Problem**: No language identification in pipeline  
-**Impact**: Cannot segment errors by language, cannot validate multilingual models  
-**Solution**: Add language detection in Phase 1
+### 6. **English-Only Dataset** ✅ UPDATED
+**Decision**: Using filtered English-only dataset  
+**Impact**: Simplified NLP pipeline, faster processing  
+**Solution**: Use English-optimized models and remove multilingual overhead
 
-```python
-from langdetect import detect_langs
-
-def detect_language(text):
-    try:
-        langs = detect_langs(text)
-        return langs[0].lang if langs else 'unknown'
-    except:
-        return 'unknown'
-
-df['language'] = df['lyrics'].apply(detect_language)
-```
+**Benefits**:
+- Faster sentiment analysis with TextBlob
+- English-optimized embeddings (all-MiniLM-L6-v2)
+- No language detection needed
+- Simplified error analysis
 
 ---
 
@@ -96,10 +89,9 @@ df['language'] = df['lyrics'].apply(detect_language)
 
 ### Phase 1: Minimal Clean Dataset
 - Load & validate data
-- **Add language detection**
 - Remove duplicates & invalid entries
 - **Artist-aware data split** (GroupShuffleSplit)
-- EDA (audio features + language distribution)
+- EDA (audio features + genre distribution)
 
 ### Phase 2: Audio-Only Baselines
 - Scale audio features (no polynomial features yet)
@@ -109,7 +101,7 @@ df['language'] = df['lyrics'].apply(detect_language)
 
 ### Phase 3: Lightweight Text Features
 - Extract: word count, unique ratio, avg word length
-- **Multilingual sentiment** (XLM-RoBERTa, NOT TextBlob)
+- **Sentiment analysis** (TextBlob for English)
 - Retrain XGBoost
 - Evaluate: Did text improve? (ΔRMSE > 0.01?)
 
@@ -126,7 +118,7 @@ df['language'] = df['lyrics'].apply(detect_language)
 
 ### Phase 6: Final Evaluation & Analysis
 - Test set evaluation **ONCE**
-- **Error segmentation**: by language, genre, artist, valence range
+- **Error segmentation**: by genre, artist, valence range
 - Feature importance analysis
 - Visualizations for thesis
 
@@ -141,10 +133,9 @@ scikit-learn>=1.3.0
 xgboost>=2.0.0
 lightgbm>=4.0.0
 
-# Multilingual NLP (CRITICAL)
+# NLP (English-optimized)
 sentence-transformers>=2.2.0
-transformers>=4.30.0
-langdetect>=1.0.9
+textblob>=0.17.0
 torch>=2.0.0
 
 # Data Processing
@@ -161,8 +152,9 @@ tqdm    # Progress bars
 pyyaml  # Configs
 ```
 
-### Removed (Ineffective/Wrong)
-- ❌ `textblob` (English-only, weak sentiment)
+### Removed (Not Needed)
+- ❌ `transformers` (not needed for English-only dataset)
+- ❌ `langdetect` (not needed for English-only dataset)
 - ❌ `gensim` (word2vec not needed with sentence-transformers)
 
 ### Optional (Benchmarking Only)
@@ -176,8 +168,8 @@ pyyaml  # Configs
 ### 1. **NEVER use random train/test split**
 ✅ **Always** use `GroupShuffleSplit` by `artist_id`
 
-### 2. **NEVER use TextBlob for sentiment**
-✅ **Always** use `cardiffnlp/twitter-xlm-roberta-base-sentiment`
+### 2. **Use TextBlob for English sentiment**
+✅ **Use** TextBlob for fast, effective English sentiment analysis
 
 ### 3. **NEVER compute embeddings multiple times**
 ✅ **Always** cache with `joblib.dump()` and reuse with `joblib.load()`
@@ -186,8 +178,8 @@ pyyaml  # Configs
 ✅ **Use** dense embeddings (MiniLM-384d) instead
 ✅ TF-IDF only for small-scale benchmarking if curious
 
-### 5. **NEVER skip language detection**
-✅ **Always** detect and analyze by language
+### 5. **English-only dataset simplification**
+✅ **Use** English-optimized models for better performance
 
 ### 6. **NEVER complete all features before testing models**
 ✅ **Always** iterate: build → train → evaluate → improve
@@ -220,8 +212,8 @@ pyyaml  # Configs
 ## 🎯 Key Takeaways
 
 1. **Iterate, don't waterfall**: Build incrementally, validate continuously
-2. **Multilingual is critical**: Dataset spans 50+ languages
-3. **Cache expensive operations**: Embeddings take hours to compute
+2. **English-optimized models**: Use all-MiniLM-L6-v2 and TextBlob for better performance
+3. **Cache expensive operations**: Embeddings take time to compute
 4. **Prevent data leakage**: Artist-aware splits are mandatory
 5. **Dense > Sparse**: Embeddings beat TF-IDF at this scale
 6. **Test once**: Touch test set only at the very end
@@ -237,10 +229,10 @@ pyyaml  # Configs
 - ✅ `memory-bank/CRITICAL_CORRECTIONS.md` - This file
 
 ### Next Steps
-1. Install new dependencies: `sentence-transformers`, `transformers`, `langdetect`
-2. Add language detection to Phase 1 data cleaning
-3. Update data splitting script to use GroupShuffleSplit
-4. Create embedding cache directory: `dataset/processed/`
+1. Install dependencies: `sentence-transformers`, `textblob`
+2. Update data splitting script to use GroupShuffleSplit (already done)
+3. Create embedding cache directory: `dataset/processed/`
+4. Extract text statistics and sentiment features
 5. Follow updated roadmap phases iteratively
 
 ---

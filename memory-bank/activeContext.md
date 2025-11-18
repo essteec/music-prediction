@@ -24,15 +24,15 @@
    - Create: `ml/preprocessing/text_statistics.py`
    - Output: `ml/features/X_*_text_stats.npy`
    
-2. **Extract Multilingual Sentiment** (HIGH PRIORITY - Slow, ~3-5 hours)
-   - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
-   - Features: sentiment_negative, sentiment_neutral, sentiment_positive, sentiment_polarity
+2. **Extract Sentiment Features** (HIGH PRIORITY - Fast, ~10-20 min)
+   - Model: `TextBlob` (simple and effective for English)
+   - Features: sentiment_polarity, sentiment_subjectivity
    - Create: `ml/preprocessing/sentiment_features.py`
    - Output: `ml/features/X_*_sentiment.npy`
-   - **Critical**: Batch processing (32 songs/batch) to avoid memory issues
+   - **Batch processing for efficiency**
    
 3. **Retrain with Text Features** (After sentiment extraction)
-   - Combine: Audio (9) + Text Stats (5) + Sentiment (4) = 18 features
+   - Combine: Audio (9) + Text Stats (5) + Sentiment (2) = 16 features
    - Update: `ml/models/baseline_models.py` to load text features
    - Train: XGBoost with combined features
    - **Target**: Improve Valence R² from 0.29 → 0.40+
@@ -112,7 +112,7 @@ This is a **methodology contribution** valuable for future music prediction rese
 - [x] Investigate temporal trends (year)
 - [x] Check lyrics availability
 - [x] Review artist distribution
-- [ ] **TODO**: Add language detection (multilingual corpus)
+- [x] **Dataset**: Using English-only songs from filtered dataset
 
 **Phase 2: Audio-Only Baselines** ✅ DONE (November 14, 2025)
 - [x] Fixed key/mode encoding (43,893 rows standardized: C→0, Major→1, etc.)
@@ -134,25 +134,24 @@ This is a **methodology contribution** valuable for future music prediction rese
   - Script: `ml/preprocessing/text_statistics.py`
   - Time: ~5 minutes
   - Output: 5 features per song
-- [ ] Extract multilingual sentiment (XLM-RoBERTa)
+- [ ] Extract sentiment (TextBlob for English)
   - Script: `ml/preprocessing/sentiment_features.py`
-  - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
-  - Time: ~3-5 hours for 732k songs (batch processing)
-  - Output: 4 features per song (negative, neutral, positive, polarity)
-- [ ] ⚠️ **NOT TextBlob** (English-only, weak signals)
+  - Model: `TextBlob`
+  - Time: ~10-20 minutes (fast for English)
+  - Output: 2 features per song (polarity, subjectivity)
 - [ ] Retrain XGBoost with audio + text features
 - [ ] Evaluate improvement (target: ΔRMSE > 0.01 for valence)
 - [ ] **Success Criteria**: Valence R² improves from 0.29 → 0.40+
 
 **Phase 4: Embedding-Based Text Features** (UPCOMING)
-- [ ] Compute embeddings **ONCE** (paraphrase-multilingual-MiniLM-L12-v2)
+- [ ] Compute embeddings **ONCE** (all-MiniLM-L6-v2 for English)
 - [ ] **Cache to disk** with joblib (MANDATORY)
 - [ ] Train XGBoost + LightGBM
 - [ ] Evaluate semantic improvement
 
 **Critical Rules**:
 - ✅ Use `GroupShuffleSplit` by artist_id (prevent data leakage)
-- ✅ Use multilingual sentiment model (NOT TextBlob)
+- ✅ Use TextBlob for English sentiment (fast and effective)
 - ✅ Cache embeddings (compute once, reuse forever)
 - ✅ NO TF-IDF as primary text representation (embeddings > TF-IDF)
 - ✅ Iterate: build → train → evaluate → improve (NOT waterfall)
@@ -218,12 +217,11 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 **Phase 2: Lightweight Text**
 - Basic stats: word count, unique words, unique ratio, avg word length
-- **Multilingual sentiment**: cardiffnlp/twitter-xlm-roberta-base-sentiment
-  - Returns: negative, neutral, positive probabilities + polarity (-1 to 1)
-  - Supports: 50+ languages
+- **Sentiment**: TextBlob for English
+  - Returns: polarity (-1 to 1), subjectivity (0 to 1)
 
 **Phase 3: Embeddings**
-- **Model**: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+- **Model**: sentence-transformers/all-MiniLM-L6-v2 (English-optimized)
 - **Output**: 384-dimensional dense vectors
 - **Strategy**: Compute ONCE, cache with joblib
 - **Why**: Semantic understanding > word frequency (TF-IDF)
@@ -235,7 +233,6 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 **What NOT to do**:
 - ❌ TF-IDF as primary representation (only for benchmarking if curious)
-- ❌ TextBlob for sentiment (English-only)
 - ❌ One-hot encoding for genre (too many dimensions)
 - ❌ Polynomial features without testing improvement
 
@@ -246,7 +243,7 @@ This is a **methodology contribution** valuable for future music prediction rese
 - **Metrics**: 
   - Primary: RMSE, R² (for regression)
   - Secondary: MAE
-  - **Error Segmentation**: by language, genre, artist, valence range
+  - **Error Segmentation**: by genre, artist, valence range
 - **Visualizations**: 
   - Predicted vs actual scatter
   - Error distribution histogram
@@ -319,11 +316,11 @@ This is a **methodology contribution** valuable for future music prediction rese
 - **Achievement**: Roadmap corrected from waterfall to iterative approach
 - **Key Fixes**:
   1. ✅ Artist-aware GroupShuffleSplit (prevents data leakage)
-  2. ✅ Multilingual sentiment (XLM-RoBERTa, NOT TextBlob)
+  2. ✅ English-optimized models (TextBlob, all-MiniLM-L6-v2)
   3. ✅ Dense embeddings > TF-IDF (semantic, compact, fast)
   4. ✅ Embedding caching (compute once, reuse forever)
   5. ✅ Iterative development (audio → text → embeddings → metadata)
-  6. ✅ Language detection (multilingual corpus support)
+  6. ✅ Using English-only dataset (simplified pipeline)
 - **Impact**: More realistic timeline, better methodology, higher quality results
 - **Documentation**: See `CRITICAL_CORRECTIONS.md` for full details
 - **Dependencies**: Updated `requirements-ml.txt` with correct libraries
@@ -348,7 +345,7 @@ This is a **methodology contribution** valuable for future music prediction rese
 - This is a comparison study, not just building one model
 - Need to tell a story: "which approach works best and why?"
 - **Iterative development > waterfall**: Validate continuously, avoid wasted work
-- **Multilingual support is critical**: Dataset spans 50+ languages
+- **English-only dataset**: Simplified NLP pipeline, faster processing
 - **Prevent data leakage**: Artist-aware splits are mandatory
 - Thesis should contribute methodology, not necessarily SOTA results
 - GitHub presence is important for both partners' portfolios
