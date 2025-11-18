@@ -9,7 +9,7 @@ print("INVESTIGATING LOUDNESS, TEMPO, KEY & MODE OUTLIERS")
 print("=" * 80)
 
 # Read the data
-filepath = 'dataset/processed/english_ml_ready.csv'
+filepath = '../../data/processed/english_ml_ready.csv'
 print(f"\nReading: {filepath}")
 print("This may take a moment...\n")
 

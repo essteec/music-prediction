@@ -466,8 +466,8 @@ def generate_report(stats, output_path):
 
 if __name__ == "__main__":
     # File paths
-    data_dir = Path('dataset')
-    reports_dir = Path('reports')
+    data_dir = Path('../../data')
+    reports_dir = Path('../../docs/reports')
     reports_dir.mkdir(exist_ok=True)
 
     enhanced_path = data_dir / 'processed/english_ml_ready.csv' # 'raw/songs_enhanced_full.csv'

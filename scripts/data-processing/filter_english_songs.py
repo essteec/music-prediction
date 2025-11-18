@@ -71,8 +71,8 @@ def filter_english_songs(input_file, output_file):
 
 def main():
     # File paths
-    input_file = '../dataset/processed/songs_ml_ready.csv'
-    output_file = '../dataset/processed/english_ml_ready.csv'
+    input_file = '../../data/processed/multi-lang/songs_ml_ready.csv'
+    output_file = '../../data/processed/english_ml_ready.csv'
     
     # Check if input file exists
     if not os.path.exists(input_file):

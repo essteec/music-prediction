@@ -21,8 +21,8 @@ print("DATA CLEANING SCRIPT")
 print("=" * 80)
 
 # Paths
-input_file = Path('dataset/raw/songs_enhanced_full.csv')
-output_file = Path('dataset/processed/songs_ml_ready.csv')
+input_file = Path('../../data/raw/songs_enhanced_full.csv')
+output_file = Path('../../data/processed/songs_ml_ready.csv')
 output_file.parent.mkdir(exist_ok=True)
 
 # Read data
