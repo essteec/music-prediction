@@ -1,6 +1,0 @@
-pandas
-beautifulsoup4
-lxml
-selenium
-requests
-cloudscraper
