@@ -1,9 +1,33 @@
+# Audio Feature Names (Mixed Scaling Strategy)
+# Total: 21 features
+
+# Normalized [0,1] features (unchanged):
 acousticness
 instrumentalness
 liveness
 speechiness
+
+# Scaled features (StandardScaler):
 loudness
 tempo
 duration_ms
-key
+year
+
+# Categorical features (unchanged):
 mode
+
+# Cyclical features (sin/cos encoding):
+key_sin
+key_cos
+
+# Genre (one-hot encoded):
+genre_Blues
+genre_Classical
+genre_Country
+genre_Electronic
+genre_Folk
+genre_Hip-Hop
+genre_Jazz
+genre_Pop
+genre_R&B
+genre_Rock

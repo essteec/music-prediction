@@ -158,8 +158,6 @@ This is a **methodology contribution** valuable for future music prediction rese
 
 ### 2. Finalize Target Variable Decision ✅
 - [x] Decision made: 4 targets (valence, energy, danceability, popularity)
-- [ ] Discuss with team partner
-- [ ] Confirm with advisor if needed
 - [x] Update project documentation (Memory Bank updated)
 
 ### 3. Dataset Specification (After Validation)

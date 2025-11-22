@@ -151,11 +151,12 @@ COLUMN_SPECS = {
         'known_issues': ['year=0']
     },
     'genre': {
-        'type': 'string',
+        'type': 'categorical',
+        'valid_values': ["Classical", "Folk", "Blues", "Jazz", "Country", 
+                        "R&B", "Rock", "Pop", "Hip-Hop", "Electronic", "Unknown"],
         'null_allowed': False,
         'ml_impact': 'HIGH',
-        'target': False,
-        'known_issues': ['NaN values']
+        'target': False
     },
     'popularity': {
         'type': 'int',
@@ -296,11 +297,12 @@ def analyze_dataset(filepath, chunksize=50000):
             
             # Genre issues
             if 'genre' in chunk.columns:
+                # Use valid_values from COLUMN_SPECS
+                valid_genres = COLUMN_SPECS['genre']['valid_values']
                 stats['genre_issues']['nan'] += chunk['genre'].isna().sum()
                 stats['genre_issues']['empty'] += (chunk['genre'] == '').sum()
-                stats['genre_issues']['invalid'] += chunk['genre'].isin(
-                    ['Unknown', 'nan', 'NaN', 'None', 'null']
-                ).sum()
+                stats['genre_issues']['invalid'] += (~chunk['genre'].isin(valid_genres) & 
+                                                      chunk['genre'].notna()).sum()
             
             # Year issues
             if 'year' in chunk.columns:
@@ -410,15 +412,21 @@ def generate_report(stats, output_path):
         
         # Genre Issues
         f.write("\n" + "-" * 100 + "\n")
-        f.write("GENRE ISSUES (KNOWN PROBLEM)\n")
+        f.write("GENRE VALIDATION\n")
         f.write("-" * 100 + "\n")
-        f.write(f"NaN genres:     {stats['genre_issues']['nan']:>12,}\n")
-        f.write(f"Empty genres:   {stats['genre_issues']['empty']:>12,}\n")
-        f.write(f"Invalid genres: {stats['genre_issues']['invalid']:>12,}\n")
+        valid_genres = COLUMN_SPECS['genre']['valid_values']
+        f.write(f"Expected genres: {', '.join(valid_genres)}\n")
+        f.write("-" * 100 + "\n")
+        f.write(f"NaN genres:         {stats['genre_issues']['nan']:>12,}\n")
+        f.write(f"Empty genres:       {stats['genre_issues']['empty']:>12,}\n")
+        f.write(f"Invalid genres:     {stats['genre_issues']['invalid']:>12,} (not in expected list)\n")
         total_genre_issues = sum(stats['genre_issues'].values())
         pct_genre = (total_genre_issues / stats['total_rows'] * 100)
-        f.write(f"{'TOTAL:':<16s} {total_genre_issues:>12,} ({pct_genre:.2f}%)\n")
-        f.write(f"\n⚠️ ACTION REQUIRED: Define strategy for handling genre issues\n")
+        f.write(f"{'TOTAL:':<20s} {total_genre_issues:>12,} ({pct_genre:.2f}%)\n")
+        if total_genre_issues > 0:
+            f.write(f"\n⚠️ ACTION REQUIRED: Fix genre issues (should be one of {len(valid_genres)} valid values)\n")
+        else:
+            f.write(f"\n✅ All genres are valid!\n")
         
         # Year Issues
         f.write("\n" + "-" * 100 + "\n")

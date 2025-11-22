@@ -7,10 +7,10 @@
 │                    PROJECT STRUCTURE                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  dataset/          →  Data collection & preprocessing       │
+│  data/             →  Data collection & preprocessing       │
 │  ml/               →  Model training & evaluation           │
 │  thesis/           →  Academic documentation                │
-│  timeline/         →  Project management                    │
+│  docs/             →  Project management                    │
 │  memory-bank/      →  Project knowledge base                │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
