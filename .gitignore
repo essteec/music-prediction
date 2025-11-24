@@ -104,5 +104,4 @@ spotify-songs-with-attributes-and-lyrics.zip
 !results/models/
 !results/metrics/
 !results/figures/
-results/**
 !results/**/.gitkeep

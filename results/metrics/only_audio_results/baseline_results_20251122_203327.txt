@@ -1,0 +1,39 @@
+- changelog:
+    - no year and genre columns
+    - optimized feature normalization (it was standard scale for each one)
+        - do not touched 0-1 scaled features acousticness, instrumentalness, liveness, speechiness
+        - standard scaling for year, tempo, loudness, duration_ms
+        - categorical encoding for mode
+        - one-hot encoding for genre
+        - special case cyclical encoding for key
+- columns
+    - acousticness
+    - instrumentalness
+    - liveness
+    - speechiness
+    - loudness
+    - tempo
+    - duration_ms
+    - key
+    - mode
+- only english language
+- approx 550,000 songs
+
+# Results
+target,model,rmse,mae,r2
+valence,Mean,0.24883977098751683,0.21095219951632996,-0.0004373575663936258
+valence,LinearRegression,0.23863588266989633,0.20081492535881937,0.07992801110859082
+valence,Ridge,0.2386358587049462,0.2008149682809636,0.07992819590459033
+valence,XGBoost,0.21276968311905597,0.17520839346478576,0.268574987072671
+energy,Mean,0.24484574945189475,0.2059276396457485,-1.947289463011259e-08
+energy,LinearRegression,0.12028801951301224,0.09520141103814807,0.7586431554187751
+energy,Ridge,0.12028794932319141,0.0952015738994589,0.7586434370891992
+energy,XGBoost,0.1050931018150329,0.07983917633812994,0.8157687532127067
+danceability,Mean,0.1711322041120216,0.13929654053541504,-0.0002904286482299234
+danceability,LinearRegression,0.1603946781949106,0.13014113838314556,0.12129613939069706
+danceability,Ridge,0.16039463767869216,0.13014108824491447,0.12129658331755877
+danceability,XGBoost,0.128863104007427,0.10285042309431314,0.43282144485935337
+popularity,Mean,16.95713756325786,14.231703310742574,-0.00041628674005766975
+popularity,LinearRegression,16.845082687483643,14.087955480150939,0.012761778473869945
+popularity,Ridge,16.845081516940464,14.087958241326167,0.012761915677699354
+popularity,XGBoost,16.671069568173333,13.907458305358887,0.03305321931838989
