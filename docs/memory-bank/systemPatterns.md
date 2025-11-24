@@ -80,11 +80,11 @@ Comparison Analysis
 - **TensorFlow/PyTorch**: If including deep learning
 - **NLTK/spaCy**: NLP preprocessing for lyrics
 
-### Feature Engineering for Lyrics
-- **Bag of Words / TF-IDF**: Traditional text representation
-- **Word Embeddings**: Word2Vec, GloVe, or FastText
-- **Sentiment Analysis**: TextBlob or VADER for emotional content
-- **Linguistic Features**: Rhyme density, vocabulary richness, etc.
+### Feature Engineering for Lyrics (English-only)
+- **Text Statistics**: Word count, unique words, character count (✅ Phase 3 complete)
+- **Sentiment Analysis**: TextBlob for polarity and subjectivity (✅ Phase 3 complete)
+- **Word Embeddings**: all-MiniLM-L6-v2 (384-d, optional Phase 4)
+- **Linguistic Features**: Vocabulary richness, average word length (✅ Phase 3 complete)
 
 ## Component Relationships
 

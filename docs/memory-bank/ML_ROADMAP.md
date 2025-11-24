@@ -127,12 +127,15 @@ def create_artist_aware_splits(df, test_size=0.15, val_size=0.15, random_state=4
 
 ### 2.1 Audio Feature Preparation
 
-**Goal**: Prepare only audio features for initial modeling
+**Goal**: Prepare audio features + metadata for initial modeling
 
-**Audio Features to Use**:
+**Audio Features to Use** (9 core + 12 metadata = 21 total):
 - `energy`, `loudness`, `speechiness`, `acousticness`
-- `instrumentalness`, `liveness`, `tempo`, `duration_ms`
-- `danceability`, `mode`, `key`
+- `instrumentalness`, `liveness`, `tempo`, `duration_ms`, `danceability`
+- **Metadata Features** (✅ INCLUDED in Phase 1/2):
+  - Genre one-hot encoding (10 genres)
+  - Key cyclical encoding (sin/cos)
+  - Year normalization
 
 **Feature Scaling**:
 ```python
@@ -265,13 +268,11 @@ df_text_stats = pd.DataFrame(text_stats.tolist())
 
 ### 3.2 Sentiment Extraction
 
-**⚠️ Use TextBlob for English Songs**
-
-**Model**: `TextBlob`
+**Model**: `TextBlob` (English-only)
 
 **Why**: 
 - Simple and effective for English text
-- Fast processing
+- Fast processing (~8 minutes for 732k songs)
 - Provides polarity and subjectivity scores
 
 ```python
@@ -334,12 +335,12 @@ print(f"XGBoost + Text RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_xgb_text)
 
 **⚠️ CRITICAL**: Compute embeddings ONCE and save to disk
 
-**Model**: `sentence-transformers/all-MiniLM-L6-v2` (English optimized)
+**Model**: `sentence-transformers/all-MiniLM-L6-v2`
 
 **Why**:
-- Optimized for English text
+- Optimized for English text (matches our English-only dataset)
 - Compact (384 dimensions)
-- Fast inference
+- Fast inference (~30-60 min for 732k songs)
 - Better than TF-IDF for semantic meaning
 
 ```python
@@ -440,9 +441,11 @@ print(f"LightGBM + Embeddings RMSE: {np.sqrt(mean_squared_error(y_val, y_pred_lg
 
 ---
 
-## Phase 5: Genre & Metadata Embeddings
+## Phase 5: Genre & Metadata Features (✅ INCLUDED IN PHASE 1/2)
 
-### 5.1 Genre Encoding Strategy
+**Note**: Genre and year features were already included in the baseline audio features (Phase 1/2), not as a separate phase. This section is kept for reference on encoding strategies used.
+
+### 5.1 Genre Encoding Strategy (Already Applied)
 
 **Problem**: One-hot encoding creates high dimensionality if many genres
 
@@ -782,17 +785,18 @@ create_visualizations(y_test, y_pred_final)
 ## 🔧 Compute Constraints Planning
 
 ### Memory Budget
-- **Embeddings**: ~700k songs × 384 dims × 4 bytes ≈ 1 GB (manageable)
-- **TF-IDF**: ~700k songs × 1000 features × 4 bytes ≈ 2.8 GB (sparse, but avoid)
-- **Recommendation**: Use embeddings, cache to disk
+- **Embeddings**: ~732k songs × 384 dims × 4 bytes ≈ 1.1 GB (manageable, optional Phase 4)
+- **TF-IDF**: ~732k songs × 1000 features × 4 bytes ≈ 2.9 GB (sparse, avoided)
+- **Current Features**: Audio (21) + Text Stats (5) + Sentiment (2) = 28 features (minimal memory)
+- **Recommendation**: Current features sufficient; embeddings only if needed for thesis goals
 
 ### Time Budget
-- **Embedding computation**: ~30-60 min for English songs (one-time)
-- **Sentiment extraction**: ~10-20 min with TextBlob (one-time, batch process)
+- **Embedding computation**: ~30-60 min for 732k English songs (one-time, optional Phase 4)
+- **Sentiment extraction**: ~8 min with TextBlob (one-time, ✅ COMPLETE)
+- **Text statistics**: ~2 min (one-time, ✅ COMPLETE)
 - **Model training**: 
   - XGBoost: 5-15 min per run
-  - LightGBM: 2-8 min per run
-  - MLP: 10-30 min per run
+  - LightGBM: 2-8 min per run (not used in current thesis)
 
 ### Storage Budget
 - **Raw data**: ~500 MB
@@ -842,7 +846,7 @@ Analyze:
 
 ### Loop 2: Add Lightweight Text
 - Extract text statistics
-- Compute multilingual sentiment
+- Compute sentiment with TextBlob
 - Retrain XGBoost
 - **Decision Point**: Did text improve performance? (ΔRMSE > 0.01)
 

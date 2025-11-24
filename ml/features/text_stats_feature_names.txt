@@ -1,0 +1,8 @@
+# Text Statistics Feature Names
+# Total: 5 features
+
+word_count
+unique_word_count
+unique_ratio
+avg_word_length
+char_count

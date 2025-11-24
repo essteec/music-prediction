@@ -12,7 +12,7 @@ This project serves as a final year thesis exploring the intersection of music i
 
 ### Technical Problem
 - **Data Gap**: ✅ RESOLVED - Dataset enhancement complete (November 10, 2025)
-- **Data Quality**: 🔍 IN PROGRESS - Validating scraped data (NaN genres, invalid years)
+- **Data Quality**: ✅ COMPLETE - Cleaned dataset ready for ML pipeline (732,988 songs, English-only)
 - **Prediction Challenge**: Can textual data (lyrics) enhance prediction of perceptual attributes (danceability, valence, energy, popularity)?
 - **Model Selection**: Which algorithms work best for this specific domain?
 
@@ -37,10 +37,13 @@ This project serves as a final year thesis exploring the intersection of music i
 ### System Flow
 ```
 Raw Dataset → ✅ Data Enrichment (Scraping COMPLETE) → 
-🔍 Data Validation & Cleaning (IN PROGRESS) → 
+✅ Data Validation & Cleaning (COMPLETE) → 
 Feature Engineering → Model Training (4 Targets × Multiple Algorithms) → 
 Evaluation & Comparison → Thesis Findings
 ```
+
+**Final Dataset**: `data/processed/english_ml_ready.csv` (732,988 songs, English-only)
+**Training Split**: 386,399 train / 82,187 val / 82,274 test (artist-aware)
 
 ## Target Variables - FINALIZED (October 10, 2025)
 

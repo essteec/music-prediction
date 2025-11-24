@@ -27,19 +27,18 @@
 - **CatBoost**: Handles categorical features well (for genre encoding)
 
 #### NLP/Text Processing
-- **sentence-transformers**: Multilingual embeddings (PRIMARY for lyrics)
-  - Model: `paraphrase-multilingual-MiniLM-L12-v2` (384-d, 50+ languages)
-  - Fast, semantic, compact alternative to TF-IDF
-- **transformers** (HuggingFace): Multilingual sentiment analysis
-  - Model: `cardiffnlp/twitter-xlm-roberta-base-sentiment`
-  - ⚠️ **DO NOT use TextBlob** - English-only, weak for multilingual
-- **langdetect**: Language identification for multilingual corpus
+- **TextBlob**: English sentiment analysis (PRIMARY)
+  - Provides polarity (-1 to +1) and subjectivity (0 to 1)
+  - Fast, lightweight, effective for English-only dataset
+- **sentence-transformers**: English embeddings (OPTIONAL for Phase 4)
+  - Model: `all-MiniLM-L6-v2` (384-d, English-optimized)
+  - Fast, semantic, compact for semantic understanding
 - **nltk** or **spaCy**: Text preprocessing, tokenization
 - **scikit-learn TfidfVectorizer**: Only for small-scale benchmarking (NOT primary)
 
-#### Optional Deep Learning
-- **TensorFlow** or **PyTorch**: If exploring neural networks
-- **Keras**: High-level API for quick prototyping
+#### Optional Deep Learning (Not Used)
+- **TensorFlow** or **PyTorch**: Skipped for traditional ML focus
+- **Keras**: Not used - traditional ML sufficient for thesis
 
 ### Data Visualization
 - **matplotlib**: Basic plotting
@@ -76,42 +75,36 @@ selenium
 requests  # Added for HTTP-based scraper
 ```
 
-## Dataset Files (November 10, 2025)
+## Dataset Files (November 24, 2025)
 
-### Scraped Data Files ✅ COMPLETE
-1. **songs_enhanced_full.csv**
-   - All successful scrapes
+### ML-Ready Dataset ✅ COMPLETE
+1. **data/processed/english_ml_ready.csv** (PRIMARY INPUT)
+   - Clean, English-only dataset for ML pipeline
+   - **Size**: 732,988 songs
+   - **Splits**: 386,399 train / 82,187 val / 82,274 test (artist-aware)
+   - **Features**: All audio features + lyrics + metadata (genre, year, explicit)
+   - **Status**: ✅ READY - Current production dataset
+   - **Validation**: Complete - no NaN values, valid ranges, deduplicated
+
+### Scraped Data Files (Archive)
+2. **data/scraped/songs_enhanced_full.csv**
+   - All successful scrapes from Chosic
    - Contains: popularity, genre, year, explicit flag
-   - **Status**: Needs validation
-   - **Known Issues**: 
-     - Some NaN genre values
-     - Some year = 0 values
+   - **Status**: Archive - superseded by english_ml_ready.csv
    
-2. **failed_tracks.csv**
-   - All failed scrapes
-   - Contains: track information and failure reasons
-   - **Status**: Needs analysis
-   - **Next**: Determine failure patterns, retry strategy
+3. **data/scraped/failed_tracks.csv**
+   - Failed scraping attempts
+   - **Status**: Archive - for reference only
    
-3. **unknown_tracks.csv**
-   - Successful scrapes with undetected genres
-   - Contains: track info but genre detection failed
-   - **Status**: Needs processing
-   - **Next**: Alternative genre mapping or categorization
-
-4. **genre_mappings.csv**
+4. **data/scraped/genre_mappings.csv**
    - Genre normalization mappings
-   - **Status**: Reference file for genre validation
+   - **Status**: Reference file
 
-### Original Data Files
-5. **songs_with_attributes_and_lyrics.csv**
-   - Base dataset (955,320 songs, 1.5GB)
+### Original Data Files (Archive)
+5. **data/raw/songs_with_attributes_and_lyrics.csv**
+   - Original base dataset (955,320 songs, 1.5GB)
    - Audio features + lyrics
-   - **Status**: Source data for scraping
-
-6. **songs_with_lyrics_and_timestamps.csv**
-   - Additional temporal information
-   - **Status**: Reference data
+   - **Status**: Archive - source for english_ml_ready.csv
 
 ## Recommended Additional Dependencies
 
@@ -120,13 +113,10 @@ requests  # Added for HTTP-based scraper
 # Core ML
 scikit-learn>=1.3.0
 xgboost>=2.0.0
-lightgbm>=4.0.0
 
-# NLP - CRITICAL for multilingual text
-sentence-transformers>=2.2.0  # Lyric embeddings
-transformers>=4.30.0  # Sentiment analysis
-langdetect>=1.0.9  # Language detection
-torch>=2.0.0  # Backend for transformers
+# NLP - English-only
+textblob>=0.17.0  # Sentiment analysis (PRIMARY)
+sentence-transformers>=2.2.0  # Optional for Phase 4 embeddings
 
 # Data Processing
 numpy>=1.24.0
@@ -139,7 +129,6 @@ seaborn>=0.12.0
 # Utilities
 tqdm  # Progress bars
 joblib  # Model persistence & caching
-pyyaml  # Config files
 
 # Jupyter
 jupyter
@@ -183,14 +172,15 @@ python -m ipykernel install --user --name=bitirme
   - Compute embeddings ONCE, cache to disk with `joblib`
   - Use pandas chunking for initial CSV processing
   - Artist-aware GroupShuffleSplit prevents data leakage
-- **Embedding Cache**:
+- **Dataset Size**: 732,988 songs (English-only, cleaned)
+- **Embedding Cache** (Optional Phase 4):
   ```python
   # Compute once
   embeddings = model.encode(lyrics_list, batch_size=64)
-  joblib.dump(embeddings, 'dataset/processed/train_embeddings.pkl')
+  joblib.dump(embeddings, 'ml/features/train_embeddings.pkl')
   
   # Reuse in future runs
-  embeddings = joblib.load('dataset/processed/train_embeddings.pkl')
+  embeddings = joblib.load('ml/features/train_embeddings.pkl')
   ```
 - **Avoid**: TF-IDF on 700k songs (memory-intensive, sparse)
 

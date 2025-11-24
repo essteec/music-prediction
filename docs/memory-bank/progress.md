@@ -142,12 +142,12 @@
   - [x] Verified no data leakage (artist splits clean, energy not in features)
   - [x] Compared old (median imputation) vs new (proper encoding): virtually identical performance
 
-- [ ] **Feature Engineering - ITERATIVE APPROACH**
-  - **Phase 1**: Audio features only (scaled, no polynomial)
-  - **Phase 2**: Lightweight text features (word count, unique ratio, avg word length)
-  - **Phase 3**: Sentiment analysis (TextBlob for English)
-  - **Phase 4**: Lyric embeddings (compute ONCE, cache to disk)
-  - **Phase 5**: Genre & metadata (target encoding, NOT one-hot)
+- [x] **Feature Engineering - ITERATIVE APPROACH** ✅ PHASE 3 COMPLETE (November 24, 2025)
+  - **Phase 1**: ✅ Audio features only (21 features with genre, year, cyclical key)
+  - **Phase 2**: ✅ Lightweight text features (5 statistical features)
+  - **Phase 3**: ✅ Sentiment analysis (2 features via TextBlob)
+  - **Phase 4**: ⏸️ Lyric embeddings (OPTIONAL - decide based on Phase 3 results)
+  - **Phase 5**: ✅ Genre & metadata already included in Phase 1 audio features
   - ⚠️ **NO TF-IDF** as primary representation (only for benchmarking)
 
 ### ML Pipeline (Core Work - ITERATIVE APPROACH)
@@ -162,23 +162,24 @@
     - Danceability RMSE: 0.129, R² = 0.44
     - Popularity RMSE: 17.08, R² = 0.04
 
-- [ ] **Phase 2: + Lightweight Text Features** 🔥 NEXT PRIORITY
-  - Add: word count, unique ratio, avg word length
-  - Add: Sentiment (TextBlob for English)
-  - Retrain XGBoost
-  - **Goal**: Evaluate text improvement (ΔRMSE > 0.01?)
+- [x] **Phase 2: + Lightweight Text Features** ✅ COMPLETE (November 24, 2025)
+  - Added: word count, unique_word_count, unique_ratio, avg_word_length, char_count (5 features)
+  - Added: Sentiment via TextBlob (polarity, subjectivity - 2 features)
+  - Trained 3 variants: Text Stats only, Sentiment only, Combined
+  - **Goal ACHIEVED**: Text improved valence (+0.025 R²), popularity (+0.024 R²)
+  - **Key Finding**: Text statistics > Sentiment for prediction
 
-- [ ] **Phase 3: + Embeddings**
+- [ ] **Phase 3: + Embeddings** (OPTIONAL - Under Review)
   - Compute embeddings ONCE (all-MiniLM-L6-v2 for English)
   - Cache to disk with joblib
   - Train XGBoost + LightGBM
-  - **Goal**: Semantic text understanding (ΔRMSE > 0.02?)
+  - **Decision**: Evaluate if needed given text stats success
 
-- [ ] **Phase 4: + Metadata**
-  - Genre (target encoding)
+- [x] **Phase 4: + Metadata** ✅ ALREADY INCLUDED
+  - Genre (one-hot encoded - 10 genres)
   - Year (normalized)
-  - Final model training
-  - **Goal**: Complete feature set
+  - Already in Phase 1 audio features (21 total features)
+  - **Goal**: Complete feature set ✅
 
 - [ ] **Phase 5: Final Evaluation & Analysis**
   - Test set evaluation (ONCE)
@@ -287,17 +288,16 @@
 
 ## 📊 Project Status Overview
 
-### Overall Progress: ~25%
+### Overall Progress: ~45%
 
 **Phase Breakdown**:
 - ✅ Data Collection: 100% (COMPLETE)
 - ✅ Data Preprocessing: 100% (COMPLETE - cleaning, encoding fix, EDA done)
-- ✅ Feature Engineering - Phase 1: 100% (Audio features prepared, scaled, saved)
-- ✅ Model Training - Phase 1: 100% (Audio-only baselines trained for all 4 targets)
-- 📊 Feature Engineering - Phase 2: 0% (Text features - NEXT PRIORITY)
-- 📋 Model Training - Phase 2: 0% (Audio + Text models)
-- 📋 Evaluation: 20% (Baseline metrics documented, error analysis pending)
-- 🚧 Thesis Writing: 15% (Planning complete, baseline results ready for methodology)
+- ✅ Feature Engineering - Phase 1-3: 100% (Audio + Text Stats + Sentiment complete)
+- ✅ Model Training - Phases 1-3: 100% (Baseline, Text Stats, Sentiment, Combined trained)
+- 📊 Feature Engineering - Phase 4: 0% (Embeddings - UNDER REVIEW)
+- 📋 Evaluation: 40% (Comparative analysis complete, error segmentation pending)
+- 🚧 Thesis Writing: 25% (Methodology crystallized, results documented)
 
 ### Timeline Health: ⚠️ AT RISK - Critical Blocker
 - **Blocker**: Scraping performance crisis (136 days at current rate)

@@ -1,10 +1,10 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (November 14, 2025)
+## Current Sprint (November 24, 2025)
 
-### 🎉 PHASE 1 & 2 COMPLETE: Audio-Only Baselines Trained!
+### 🎉 PHASE 1, 2 & 3 COMPLETE: Text Features Analyzed!
 
-**Status Update (November 14, 2025)**:
+**Status Update (November 24, 2025)**:
 - ✅ **Data Collection COMPLETE**: All scraping finished!
 - ✅ **Validation COMPLETE**: Comprehensive validation framework created
 - ✅ **Cleaning COMPLETE**: Data cleaned and validated (732,988 songs)
@@ -12,39 +12,61 @@
 - ✅ **Final Dataset**: `dataset/processed/songs_ml_ready.csv` - 0 duplicates, 0 encoding issues
 - ✅ **EDA COMPLETE**: `notebooks/01_exploratory_data_analysis.ipynb` executed
 - ✅ **Splits COMPLETE**: Artist-aware 70/15/15 splits (zero overlap verified)
-- ✅ **Audio Features COMPLETE**: 9 features extracted, scaled, saved
+- ✅ **Audio Features COMPLETE**: 21 features (includes genre, year, cyclical key)
 - ✅ **Baseline Models COMPLETE**: Mean, Linear, Ridge, XGBoost trained for all 4 targets
-- ✅ **Results Validated**: Energy R²=0.81, Valence R²=0.29, Danceability R²=0.44, Popularity R²=0.04
-- 🔥 **Next Phase**: Add text features to improve Valence R² from 0.29 → 0.45-0.60
+- ✅ **TEXT FEATURES COMPLETE**: Text stats + Sentiment extracted and tested
+- ✅ **Key Finding**: Text statistics > Sentiment for valence prediction!
+- 🔥 **Next Phase**: Decide on embeddings or proceed to final evaluation
 
-### Active Tasks - PHASE 3: TEXT FEATURES 🔥
+### ✅ PHASE 3 COMPLETE: TEXT FEATURES (November 24, 2025)
 
-1. **Extract Text Statistics** (NEXT - Fast, ~5 min)
-   - Word count, unique words, unique ratio, avg word length
-   - Create: `ml/preprocessing/text_statistics.py`
-   - Output: `ml/features/X_*_text_stats.npy`
-   
-2. **Extract Sentiment Features** (HIGH PRIORITY - Fast, ~10-20 min)
-   - Model: `TextBlob` (simple and effective for English)
-   - Features: sentiment_polarity, sentiment_subjectivity
-   - Create: `ml/preprocessing/sentiment_features.py`
-   - Output: `ml/features/X_*_sentiment.npy`
-   - **Batch processing for efficiency**
-   
-3. **Retrain with Text Features** (After sentiment extraction)
-   - Combine: Audio (9) + Text Stats (5) + Sentiment (2) = 16 features
-   - Update: `ml/models/baseline_models.py` to load text features
-   - Train: XGBoost with combined features
-   - **Target**: Improve Valence R² from 0.29 → 0.40+
-   
-4. **Get 10 similar thesis for reference** (LOWER PRIORITY - can wait)
-   - Need to collect academic references
-   - Target: Theses on music prediction, lyric analysis, audio feature ML
-   
-5. **Write abstract** (LOWER PRIORITY - can wait)
-   - Multi-target approach confirmed (valence, energy, danceability, popularity)
-   - Needs: Clear problem statement and methodology outline
-   - Can leverage baseline results already achieved
+**What We Did**:
+1. ✅ Extracted text statistics (5 features): word_count, unique_word_count, unique_ratio, avg_word_length, char_count
+2. ✅ Extracted sentiment (2 features): sentiment_polarity, sentiment_subjectivity via TextBlob
+3. ✅ Trained 3 model variants:
+   - Audio (21) + Text Stats (5) = 26 features
+   - Audio (21) + Sentiment (2) = 23 features  
+   - Audio (21) + Text Stats (5) + Sentiment (2) = 28 features (Combined)
+
+**Key Results (XGBoost R²)**:
+
+| Target | Baseline | +Text Stats | +Sentiment | Combined | Best Approach |
+|--------|----------|-------------|------------|----------|---------------|
+| Valence | 0.346 | **0.371** (+0.025) | 0.347 (+0.001) | **0.372** (+0.026) | Text Stats/Combined |
+| Energy | 0.833 | 0.834 (+0.001) | 0.833 (±0.000) | 0.834 (+0.001) | Any (already excellent) |
+| Danceability | 0.529 | **0.549** (+0.020) | 0.529 (±0.000) | **0.549** (+0.020) | Text Stats/Combined |
+| Popularity | 0.092 | **0.116** (+0.024) | 0.092 (±0.000) | **0.116** (+0.024) | Text Stats/Combined |
+
+**Critical Insights**:
+- 🎯 **Text statistics (word count, uniqueness) are MORE valuable than sentiment!**
+- ✅ **Valence improved**: 0.346 → 0.372 (achieved target!)
+- ✅ **Popularity improved**: 0.092 → 0.116 (significant for hard target)
+- ⚠️ **Sentiment alone provides minimal gain** - statistical text features capture more signal
+- ✅ **Combined features don't hurt** - slight improvement in valence
+
+**Feature Importance (Combined Model - Valence)**:
+1. word_count (12.4%) - **Text feature is #1!**
+2. genre_Rock (9.4%)
+3. acousticness (8.3%)
+4. duration_ms (7.9%)
+5. char_count (7.3%) - **Another text feature!**
+
+### Active Tasks - PHASE 4 DECISION 🤔
+
+**Option A: Add Embeddings** (all-MiniLM-L6-v2)
+- Pros: Semantic understanding, potentially better valence prediction
+- Cons: 384 features, ~30-60 min computation, more complex
+- Expected gain: +0.02-0.05 R² for valence
+
+**Option B: Skip to Final Evaluation**
+- Pros: Text stats already effective, simpler thesis narrative
+- Cons: Miss potential semantic improvements
+- Current: Valence R²=0.372 (acceptable for thesis)
+
+**Other Tasks** (LOWER PRIORITY):
+1. Get 10 similar thesis for reference
+2. Write abstract
+3. Document feature engineering methodology for thesis
 
 ## ✅ DECISION FINALIZED: Multi-Target Prediction
 

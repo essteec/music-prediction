@@ -1,0 +1,6 @@
+# Sentiment Feature Names
+# Total: 2 features
+# Model: TextBlob (English-optimized)
+
+sentiment_polarity
+sentiment_subjectivity
