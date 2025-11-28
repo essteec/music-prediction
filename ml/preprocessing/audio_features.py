@@ -7,18 +7,26 @@ Uses intelligent feature grouping:
 - Continuous features with different scales: StandardScaler
 - Categorical/binary features: keep as is
 - Genre: one-hot encoding
+
+Can be run standalone or as part of the preprocessing pipeline.
+Skips processing if outputs are up-to-date.
 """
+
+from __future__ import annotations
 
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
 import joblib
 from pathlib import Path
+from typing import Dict, Tuple
 
-print("=" * 80)
-print("AUDIO FEATURE PREPARATION - MIXED SCALING")
-print("=" * 80)
+from pipeline_utils import (
+    check_if_step_needed,
+    mark_step_complete,
+    FEATURES_DIR,
+    PROCESSED_DIR,
+)
 
 # Define feature groups by scaling strategy
 # Already normalized [0,1] - keep as is (no scaling needed)
@@ -56,22 +64,57 @@ GENRE_FEATURE = [
 ALL_AUDIO_FEATURES = (NORMALIZED_FEATURES + SCALE_FEATURES + 
                       CATEGORICAL_FEATURES + CYCLICAL_FEATURES + GENRE_FEATURE)
 
-print(f"\nFeature Groups:")
-print(f"  Normalized [0,1] (keep as-is): {len(NORMALIZED_FEATURES)} features")
-print(f"    → {', '.join(NORMALIZED_FEATURES)}")
-print(f"  Need Scaling (StandardScaler): {len(SCALE_FEATURES)} features")
-print(f"    → {', '.join(SCALE_FEATURES)}")
-print(f"  Categorical (keep as-is): {len(CATEGORICAL_FEATURES)} features")
-print(f"    → {', '.join(CATEGORICAL_FEATURES)}")
-print(f"  Cyclical (sin/cos encoding): {len(CYCLICAL_FEATURES)} features")
-print(f"    → {', '.join(CYCLICAL_FEATURES)} → produces 2 features (sin, cos)")
-print(f"  Genre (one-hot encode): {len(GENRE_FEATURE)} feature")
-print(f"    → {', '.join(GENRE_FEATURE)}")
 
-# Paths
-processed_dir = Path('../../data/processed')
-features_dir = Path('../features')
-features_dir.mkdir(exist_ok=True, parents=True)
+def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
+    """Process audio features with intelligent caching.
+    
+    Returns:
+        Dictionary with keys like 'X_train_audio', 'X_val_audio', etc.
+    """
+    FEATURES_DIR.mkdir(exist_ok=True, parents=True)
+    
+    # Define input and output files
+    input_files = [
+        PROCESSED_DIR / "train.csv",
+        PROCESSED_DIR / "val.csv",
+        PROCESSED_DIR / "test.csv",
+    ]
+    
+    output_files = [
+        FEATURES_DIR / "X_train_audio.npy",
+        FEATURES_DIR / "X_val_audio.npy",
+        FEATURES_DIR / "X_test_audio.npy",
+        FEATURES_DIR / "audio_scaler.pkl",
+        FEATURES_DIR / "genre_encoder.pkl",
+        FEATURES_DIR / "audio_feature_names.txt",
+    ]
+    
+    # Check if processing is needed
+    if not check_if_step_needed("audio_features", input_files, output_files):
+        if verbose:
+            print("✅ Audio features are up-to-date, skipping processing")
+        # Load and return existing features
+        return {
+            "X_train_audio": np.load(FEATURES_DIR / "X_train_audio.npy"),
+            "X_val_audio": np.load(FEATURES_DIR / "X_val_audio.npy"),
+            "X_test_audio": np.load(FEATURES_DIR / "X_test_audio.npy"),
+        }
+    
+    if verbose:
+        print("=" * 80)
+        print("AUDIO FEATURE PREPARATION - MIXED SCALING")
+        print("=" * 80)
+        print(f"\nFeature Groups:")
+        print(f"  Normalized [0,1] (keep as-is): {len(NORMALIZED_FEATURES)} features")
+        print(f"    → {', '.join(NORMALIZED_FEATURES)}")
+        print(f"  Need Scaling (StandardScaler): {len(SCALE_FEATURES)} features")
+        print(f"    → {', '.join(SCALE_FEATURES)}")
+        print(f"  Categorical (keep as-is): {len(CATEGORICAL_FEATURES)} features")
+        print(f"    → {', '.join(CATEGORICAL_FEATURES)}")
+        print(f"  Cyclical (sin/cos encoding): {len(CYCLICAL_FEATURES)} features")
+        print(f"    → {', '.join(CYCLICAL_FEATURES)} → produces 2 features (sin, cos)")
+        print(f"  Genre (one-hot encode): {len(GENRE_FEATURE)} feature")
+        print(f"    → {', '.join(GENRE_FEATURE)}")
 
 # Load splits
 print("\nLoading data splits...")
