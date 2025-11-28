@@ -2,8 +2,15 @@
 
 Extracts and scales sentiment features from lyrics using TextBlob.
 Features:
-- sentiment_polarity
-- sentiment_subjectivity
+- sentiment_polarity (range: -1 to +1, negative to positive)
+- sentiment_subjectivity (range: 0 to 1, objective to subjective)
+
+EDA Findings Applied:
+- StandardScaler for normalization
+- TextBlob for robust sentiment analysis
+
+Note: Sentiment features show moderate correlation with valence (mood)
+but are less predictive for other targets based on EDA analysis.
 
 Can be run standalone or as part of the preprocessing pipeline.
 """

@@ -1,7 +1,7 @@
 """Target Variable Processing Module
 
 Processes target variables (valence, energy, danceability, popularity).
-Applies log transformation to popularity.
+Applies log1p transformation to popularity to handle extreme right skew (EDA finding).
 
 Can be run standalone or as part of the preprocessing pipeline.
 """
@@ -94,6 +94,8 @@ def process_targets(verbose: bool = True) -> Dict[str, Dict[str, np.ndarray]]:
             array = df[target].to_numpy(dtype=np.float32)
             
             # Apply log transformation to popularity
+            # EDA Finding: Popularity is heavily right-skewed (mean=16.9, median=13.0)
+            # Log1p transformation helps normalize the distribution
             if target == "popularity":
                 array = np.log1p(array)
             

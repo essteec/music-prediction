@@ -2,10 +2,18 @@
 
 Processes audio features with intelligent caching.
 Handles:
+- Power transformation (Yeo-Johnson) for highly skewed features (EDA finding)
+  * acousticness, instrumentalness, speechiness
 - Cyclical encoding for key
 - Mixed scaling (normalized, standard scaled, categorical)
 - One-hot encoding for genre
 - Missing value handling
+
+EDA Findings Applied:
+- PowerTransformer for acousticness, instrumentalness, speechiness (extremely right-skewed)
+- Cyclical encoding for key (music theory: B wraps to C)
+- StandardScaler for loudness, tempo, duration_ms, year
+- One-hot encoding for genre (10 categories, imbalanced)
 
 Can be run standalone or as part of the preprocessing pipeline.
 """
@@ -19,7 +27,7 @@ from typing import Dict
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, PowerTransformer, StandardScaler
 
 from pipeline_utils import (
     FEATURES_DIR,
@@ -29,7 +37,11 @@ from pipeline_utils import (
 )
 
 # Feature group definitions
-NORMALIZED_FEATURES = ["acousticness", "instrumentalness", "liveness", "speechiness"]
+# EDA Finding: acousticness, instrumentalness, speechiness are extremely right-skewed
+# These require power transformation (Yeo-Johnson)
+SKEWED_FEATURES = ["acousticness", "instrumentalness", "speechiness"]
+# Liveness is slightly skewed but not extreme - can use standard scaling
+NORMALIZED_FEATURES = ["liveness"]
 SCALE_FEATURES = ["loudness", "tempo", "duration_ms", "year"]
 CATEGORICAL_FEATURES = ["mode"]
 CYCLICAL_FEATURES = ["key"]
@@ -59,7 +71,7 @@ def _handle_missing_values(splits: Dict[str, pd.DataFrame]) -> None:
     """Fill missing values using training set statistics."""
     train = splits["train"]
     
-    numeric_features = NORMALIZED_FEATURES + SCALE_FEATURES + CATEGORICAL_FEATURES
+    numeric_features = SKEWED_FEATURES + NORMALIZED_FEATURES + SCALE_FEATURES + CATEGORICAL_FEATURES
     for feat in numeric_features:
         if train[feat].isnull().any():
             median_val = train[feat].median()
@@ -77,9 +89,16 @@ def _build_feature_matrix(
     df: pd.DataFrame,
     scaler: StandardScaler,
     encoder: OneHotEncoder,
+    power_transformer: PowerTransformer,
     is_train: bool = False,
 ) -> np.ndarray:
     """Build final feature matrix from all components."""
+    # Power-transformed features (for highly skewed features)
+    if is_train:
+        X_power = power_transformer.fit_transform(df[SKEWED_FEATURES])
+    else:
+        X_power = power_transformer.transform(df[SKEWED_FEATURES])
+    
     # Normalized features (as-is)
     X_normalized = df[NORMALIZED_FEATURES].to_numpy(copy=False)
     
@@ -101,7 +120,7 @@ def _build_feature_matrix(
     else:
         X_genre = encoder.transform(df[GENRE_FEATURE])
     
-    return np.hstack([X_normalized, X_scaled, X_categorical, X_cyclical, X_genre])
+    return np.hstack([X_power, X_normalized, X_scaled, X_categorical, X_cyclical, X_genre])
 
 
 def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
@@ -128,6 +147,7 @@ def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
         FEATURES_DIR / "X_test_audio.npy",
         FEATURES_DIR / "audio_scaler.pkl",
         FEATURES_DIR / "genre_encoder.pkl",
+        FEATURES_DIR / "audio_power_transformer.pkl",
     ]
     
     # Check if processing is needed
@@ -165,14 +185,15 @@ def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
     # Handle missing values
     _handle_missing_values(splits)
     
-    # Create scalers/encoders
+    # Create scalers/encoders/transformers
     scaler = StandardScaler()
     encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
+    power_transformer = PowerTransformer(method='yeo-johnson', standardize=True)
     
     # Build feature matrices
-    X_train = _build_feature_matrix(splits["train"], scaler, encoder, is_train=True)
-    X_val = _build_feature_matrix(splits["val"], scaler, encoder, is_train=False)
-    X_test = _build_feature_matrix(splits["test"], scaler, encoder, is_train=False)
+    X_train = _build_feature_matrix(splits["train"], scaler, encoder, power_transformer, is_train=True)
+    X_val = _build_feature_matrix(splits["val"], scaler, encoder, power_transformer, is_train=False)
+    X_test = _build_feature_matrix(splits["test"], scaler, encoder, power_transformer, is_train=False)
     
     if verbose:
         print(f"\nFeature matrix shapes:")
@@ -188,10 +209,12 @@ def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
     # Save transformers
     joblib.dump(scaler, FEATURES_DIR / "audio_scaler.pkl")
     joblib.dump(encoder, FEATURES_DIR / "genre_encoder.pkl")
+    joblib.dump(power_transformer, FEATURES_DIR / "audio_power_transformer.pkl")
     
     # Save feature names
     feature_names = (
-        NORMALIZED_FEATURES
+        SKEWED_FEATURES  # Power-transformed features first
+        + NORMALIZED_FEATURES
         + SCALE_FEATURES
         + CATEGORICAL_FEATURES
         + ["key_sin", "key_cos"]

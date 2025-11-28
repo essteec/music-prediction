@@ -142,13 +142,13 @@
   - [x] Verified no data leakage (artist splits clean, energy not in features)
   - [x] Compared old (median imputation) vs new (proper encoding): virtually identical performance
 
-- [x] **Feature Engineering - ITERATIVE APPROACH** ✅ PHASE 3 COMPLETE (November 24, 2025)
+- [x] **Feature Engineering - ITERATIVE APPROACH** ✅ PHASE 4 COMPLETE (November 28, 2025)
   - **Phase 1**: ✅ Audio features only (21 features with genre, year, cyclical key)
   - **Phase 2**: ✅ Lightweight text features (5 statistical features)
   - **Phase 3**: ✅ Sentiment analysis (2 features via TextBlob)
-  - **Phase 4**: ⏸️ Lyric embeddings (OPTIONAL - decide based on Phase 3 results)
+  - **Phase 4**: ✅ Lyric embeddings (384-dim from all-MiniLM-L6-v2) - COMPLETE!
   - **Phase 5**: ✅ Genre & metadata already included in Phase 1 audio features
-  - ⚠️ **NO TF-IDF** as primary representation (only for benchmarking)
+  - ✅ **Total Features**: 412 (audio + text stats + sentiment + embeddings)
 
 ### ML Pipeline (Core Work - ITERATIVE APPROACH)
 - [x] **Phase 1: Audio-Only Baselines** ✅ COMPLETE (November 14, 2025)
@@ -169,11 +169,12 @@
   - **Goal ACHIEVED**: Text improved valence (+0.025 R²), popularity (+0.024 R²)
   - **Key Finding**: Text statistics > Sentiment for prediction
 
-- [ ] **Phase 3: + Embeddings** (OPTIONAL - Under Review)
-  - Compute embeddings ONCE (all-MiniLM-L6-v2 for English)
-  - Cache to disk with joblib
-  - Train XGBoost + LightGBM
-  - **Decision**: Evaluate if needed given text stats success
+- [x] **Phase 3: + Embeddings** ✅ COMPLETE (November 28, 2025)
+  - Implemented process_embeddings.py with intelligent caching
+  - Used all-MiniLM-L6-v2 model (384 dimensions)
+  - Cached embeddings for instant reuse
+  - Created embedding_models.py and full_features_models.py
+  - **Goal ACHIEVED**: Full feature set with semantic understanding
 
 - [x] **Phase 4: + Metadata** ✅ ALREADY INCLUDED
   - Genre (one-hot encoded - 10 genres)
@@ -181,31 +182,32 @@
   - Already in Phase 1 audio features (21 total features)
   - **Goal**: Complete feature set ✅
 
-- [ ] **Phase 5: Final Evaluation & Analysis**
-  - Test set evaluation (ONCE)
-  - Error analysis by genre/artist
-  - Feature importance analysis
-  - Visualizations for thesis
+- [ ] **Phase 5: Final Evaluation & Analysis** (CURRENT PHASE)
+  - [ ] Compare all feature combinations
+  - [ ] Test set evaluation (ONCE)
+  - [ ] Error analysis by genre/artist
+  - [ ] Feature importance analysis
+  - [ ] Visualizations for thesis
 
 - [ ] **Evaluation Framework**
   - Artist-aware cross-validation (GroupKFold)
   - Metrics: RMSE, MAE, R²
   - Error segmentation (genre, valence range)
-  - Statistical significance testing
-
 ### Documentation & Thesis
-- [ ] **Code Documentation**
-  - Docstrings for all functions
-  - Inline comments
-  - README updates
+- [x] **Code Documentation**
+  - process_embeddings.py module with docstrings
+  - EMBEDDINGS_README.md created
+  - Feature files EDA notebook created
 
-- [ ] **Thesis Writing**
-  - Abstract ✅ (this week)
-  - Introduction
-  - Literature Review
-  - Methodology
-  - Experiments & Results
-  - Discussion
+- [ ] **Thesis Writing** (HIGH PRIORITY)
+  - [ ] Abstract (this week)
+  - [ ] Introduction
+  - [ ] Literature Review (need 10 reference papers)
+  - [ ] Methodology
+  - [ ] Experiments & Results
+  - [ ] Discussion
+  - [ ] Conclusion
+  - [ ] References
   - Conclusion
   - References
 

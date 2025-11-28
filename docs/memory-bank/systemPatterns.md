@@ -81,10 +81,16 @@ Comparison Analysis
 - **NLTK/spaCy**: NLP preprocessing for lyrics
 
 ### Feature Engineering for Lyrics (English-only)
-- **Text Statistics**: Word count, unique words, character count (✅ Phase 3 complete)
+- **Text Statistics**: Word count, unique words, character count (✅ Phase 2 complete)
 - **Sentiment Analysis**: TextBlob for polarity and subjectivity (✅ Phase 3 complete)
-- **Word Embeddings**: all-MiniLM-L6-v2 (384-d, optional Phase 4)
-- **Linguistic Features**: Vocabulary richness, average word length (✅ Phase 3 complete)
+- **Word Embeddings**: all-MiniLM-L6-v2 (384-d) (✅ Phase 4 COMPLETE - November 28, 2025)
+- **Linguistic Features**: Vocabulary richness, average word length (✅ Phase 2 complete)
+
+**Total Features Available**: 412
+- Audio: 21 features (genre, year, cyclical key, audio features)
+- Text Stats: 5 features (word count, uniqueness, etc.)
+- Sentiment: 2 features (polarity, subjectivity)
+- Embeddings: 384 features (semantic vectors)
 
 ## Component Relationships
 

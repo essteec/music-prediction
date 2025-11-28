@@ -4,6 +4,12 @@
 This script intelligently runs only the preprocessing steps that are needed.
 Each step is cached and skipped if inputs haven't changed.
 
+EDA-Driven Transformations:
+- Audio: PowerTransformer for acousticness, instrumentalness, speechiness
+- Targets: Log1p transformation for popularity (heavy right skew)
+- Text Stats: Log1p for count features (word_count, unique_word_count, char_count)
+- Sentiment: StandardScaler for TextBlob features
+
 Usage:
     # Run all preprocessing steps (skips cached steps automatically)
     python run_preprocessing.py
@@ -35,20 +41,23 @@ from process_audio import process_audio_features
 from process_sentiment import process_sentiment
 from process_targets import process_targets
 from process_text_stats import process_text_statistics
+from process_embeddings import process_embeddings
 
 
 STEP_FUNCTIONS = {
     "audio": process_audio_features,
     "text_stats": process_text_statistics,
     "sentiment": process_sentiment,
+    "embeddings": process_embeddings,
     "targets": process_targets,
 }
 
 STEP_DESCRIPTIONS = {
-    "audio": "Audio features (cyclical encoding, scaling, genre one-hot)",
-    "text_stats": "Text statistics (word counts, vocabulary metrics)",
+    "audio": "Audio features (power transform skewed, cyclical encoding, scaling, genre one-hot)",
+    "text_stats": "Text statistics (word counts, vocabulary metrics, log transform)",
     "sentiment": "Sentiment analysis (TextBlob polarity & subjectivity)",
-    "targets": "Target variables (valence, energy, danceability, popularity)",
+    "embeddings": "Lyric embeddings (all-MiniLM-L6-v2, 384-dim semantic vectors)",
+    "targets": "Target variables (valence, energy, danceability, log-popularity)",
 }
 
 

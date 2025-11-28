@@ -2,6 +2,17 @@
 
 This module provides functions to check if preprocessing steps need to be run
 based on file timestamps and hash-based change detection.
+
+EDA-Driven Transformations Applied:
+- Audio Features: PowerTransformer (Yeo-Johnson) for skewed features
+- Text Stats: Log1p transformation for count features
+- Sentiment: StandardScaler for normalization
+- Targets: Log1p transformation for popularity (heavily right-skewed)
+
+Cache invalidation triggers:
+- Input file content changes (MD5 hash)
+- Dependency step updates
+- Output file missing
 """
 
 from __future__ import annotations

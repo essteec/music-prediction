@@ -14,9 +14,10 @@ print("=" * 80)
 print("ARTIST-AWARE DATA SPLITTING")
 print("=" * 80)
 
-# Paths
-data_path = Path('../../dataset/processed/english_ml_ready.csv')
-output_dir = Path('../../dataset/processed')
+# Paths (using REPO_ROOT for consistency)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+data_path = REPO_ROOT / 'data' / 'processed' / 'english_ml_ready.csv'
+output_dir = REPO_ROOT / 'data' / 'processed'
 output_dir.mkdir(exist_ok=True)
 
 # Load data

@@ -2,11 +2,15 @@
 
 Extracts and scales text statistical features from lyrics.
 Features:
-- word_count
-- unique_word_count
+- word_count (log-transformed)
+- unique_word_count (log-transformed)
 - unique_ratio
 - avg_word_length
-- char_count
+- char_count (log-transformed)
+
+EDA Findings Applied:
+- Log1p transformation for count features (word_count, unique_word_count, char_count)
+- StandardScaler for all features after transformation
 
 Can be run standalone or as part of the preprocessing pipeline.
 """

@@ -27,12 +27,13 @@
 - **CatBoost**: Handles categorical features well (for genre encoding)
 
 #### NLP/Text Processing
-- **TextBlob**: English sentiment analysis (PRIMARY)
+- **TextBlob**: English sentiment analysis (USED)
   - Provides polarity (-1 to +1) and subjectivity (0 to 1)
   - Fast, lightweight, effective for English-only dataset
-- **sentence-transformers**: English embeddings (OPTIONAL for Phase 4)
+- **sentence-transformers**: ✅ IMPLEMENTED (November 28, 2025)
   - Model: `all-MiniLM-L6-v2` (384-d, English-optimized)
   - Fast, semantic, compact for semantic understanding
+  - Cached embeddings for instant reuse
 - **nltk** or **spaCy**: Text preprocessing, tokenization
 - **scikit-learn TfidfVectorizer**: Only for small-scale benchmarking (NOT primary)
 
@@ -115,8 +116,9 @@ scikit-learn>=1.3.0
 xgboost>=2.0.0
 
 # NLP - English-only
-textblob>=0.17.0  # Sentiment analysis (PRIMARY)
-sentence-transformers>=2.2.0  # Optional for Phase 4 embeddings
+textblob>=0.17.0  # Sentiment analysis (IMPLEMENTED)
+sentence-transformers>=2.2.0  # ✅ IMPLEMENTED (November 28, 2025)
+torch>=2.0.0  # Required for sentence-transformers
 
 # Data Processing
 numpy>=1.24.0
