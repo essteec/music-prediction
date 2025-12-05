@@ -45,6 +45,7 @@ ml/features/*.pkl
 !dataset/genre_mappings.csv
 
 # Model Files
+catboost_info/
 *.pkl
 *.pickle
 *.h5

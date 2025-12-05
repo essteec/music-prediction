@@ -1,0 +1,49 @@
+- changelog:
+    - lyrics semantic embedded
+    - lyrics basic stats added
+    - lyrics sentiment analysis added
+- columns
+    - acousticness
+    - instrumentalness
+    - liveness
+    - speechiness
+    - loudness
+    - tempo
+    - duration_ms
+    - key
+    - mode
+    - year
+    - genre / one-hot encoded
+    - lyrics basic stats
+        - word_count
+        - unique_word_count
+        - unique_ratio
+        - avg_word_length
+        - char_count
+    - lyrics sentiment analysis
+        - sentiment_polarity
+        - sentiment_subjectivity
+    - lyrics semantic embedded
+        - all-MiniLM-L6-v2 (English-optimized, 384 dimensions)
+
+- only english language
+- approx 550,000 songs
+
+# Results
+target,model,rmse,mae,r2
+valence,Mean,0.2488397706329323,0.21095220744609833,-0.0004373788833618164
+valence,Linear,0.20875898792926015,0.17091922039068397,0.2958897285165074
+valence,Ridge,0.2087564364238706,0.17092091849704819,0.2959069400405856
+valence,XGBoost,0.19181862026094743,0.15562130510807037,0.40552741289138794
+energy,Mean,0.24484574535606038,0.20592762529850006,0.0
+energy,Linear,0.11259170187704426,0.08807913266827432,0.7885402870819853
+energy,Ridge,0.11257751125629616,0.08806738690837826,0.7885935868445506
+energy,XGBoost,0.09797499137904175,0.07368382066488266,0.839880108833313
+danceability,Mean,0.17113219486796455,0.1392965316772461,-0.0002903938293457031
+danceability,Linear,0.13072042747832266,0.10457132858011296,0.4163539591824392
+danceability,Ridge,0.130748190940167,0.10459110283867541,0.41610601391987523
+danceability,XGBoost,0.11198009353815956,0.08866073191165924,0.5717037320137024
+popularity,Mean,1.490248453816196,1.334253191947937,-0.0006680488586425781
+popularity,Linear,1.452437564577191,1.2831504888391163,0.049466114995428856
+popularity,Ridge,1.4524135810949934,1.2831878991976893,0.04949750625773952
+popularity,XGBoost,1.4339786189625436,1.2596580982208252,0.07347321510314941
