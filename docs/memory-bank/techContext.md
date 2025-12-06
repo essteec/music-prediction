@@ -47,6 +47,19 @@
 - **plotly**: Interactive plots (optional)
 - **pandas plotting**: Quick data exploration
 
+#### Academic Publication Style (December 6, 2025)
+All notebooks use consistent publication-quality styling:
+```python
+plt.style.use('seaborn-v0_8-paper')
+sns.set_context("paper", font_scale=1.4)
+plt.rcParams['figure.dpi'] = 300
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif']
+plt.rcParams['axes.titleweight'] = 'bold'
+plt.rcParams['axes.labelweight'] = 'bold'
+```
+Applied to: notebooks 01, 02, 03, 04, 04-2, 05
+
 ### Development Tools
 
 #### Version Control

@@ -1,10 +1,10 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (December 5, 2025)
+## Current Sprint (December 7, 2025)
 
-### 🎉 PHASE 1, 2, 3, 4 & 5 COMPLETE: Enhanced Models Trained!
+### 🎉 PHASE 1-5 COMPLETE + PHASE 6 IN PROGRESS
 
-**Status Update (December 5, 2025)**:
+**Status Update (December 7, 2025)**:
 - ✅ **Data Collection COMPLETE**: All scraping finished!
 - ✅ **Validation COMPLETE**: Comprehensive validation framework created
 - ✅ **Cleaning COMPLETE**: Data cleaned and validated (732,988 songs)
@@ -18,8 +18,56 @@
 - ✅ **EMBEDDINGS COMPLETE**: all-MiniLM-L6-v2 (384-dim semantic vectors) extracted and cached!
 - ✅ **Full Feature Models COMPLETE**: Trained with all 412 features (audio + text + embeddings)
 - ✅ **ENHANCED MODELS COMPLETE**: 14+ algorithms trained with default + tuned variants!
-- 🔥 **Next Phase**: Analyze enhanced model results and select best models for final evaluation
+- ✅ **Enhanced Models Analysis COMPLETE**: Created and executed analysis notebooks
+- ✅ **Feature Importance Analysis COMPLETE**: Extracted importance from 12 selected models
+- 🔥 **Next Phase**: Run test evaluation (ONE-TIME FINAL) with `test_evaluation_final.py`
 - ⏸️ **Artist Data Scripts**: fetch_artist_data.py and add_follower_counts.py available but NOT YET RUN
+
+### 📓 New Notebooks Created (December 5-7, 2025)
+
+1. **`notebooks/04_enhanced_models_analysis.ipynb`** ✅ EXECUTED
+   - Comprehensive analysis of 28+ enhanced models across 4 targets
+   - R² heatmap, Top 5 models bar charts, Training time analysis
+   - Default vs Tuned comparison with improvement quantification
+   - Best models identified per target
+   
+2. **`notebooks/04-2_enhanced_models_analysis.ipynb`** ✅ EXECUTED
+   - Extended analysis variant
+   
+3. **`notebooks/05_feature_importance_analysis.ipynb`** ✅ EXECUTED
+   - Feature importance extraction from 12 selected models
+   - Models analyzed: CatBoost, LightGBM, XGBoost, ExtraTrees, MLPRegressor, RandomForest (default + tuned)
+   - Top features visualization per target
+   - Feature group importance analysis
+   - Model comparison heatmaps
+
+4. **`ml/models/test_evaluation_final.py`** 🔜 READY TO RUN
+   - Final test set evaluation script
+   - Will evaluate 12 selected models on held-out test set
+   - ONE-TIME execution for final thesis results
+
+### 📊 Key Findings from Analysis (December 5-7, 2025)
+
+**Best Models by Target (Validation R²)**:
+| Target | Best Model | R² Score | RMSE |
+|--------|-----------|----------|------|
+| Valence | XGBoost_tuned | 0.4659 | 0.1818 |
+| Energy | XGBoost_tuned | 0.8487 | 0.0952 |
+| Danceability | XGBoost_tuned | 0.6092 | 0.1070 |
+| Popularity | CatBoost | 0.0783 | 1.4303 |
+
+**Selected Models for Final Evaluation (12 total)**:
+- CatBoost, CatBoost_tuned
+- LightGBM, LightGBM_tuned  
+- XGBoost, XGBoost_tuned
+- ExtraTrees, ExtraTrees_tuned
+- MLPRegressor, MLPRegressor_tuned
+- RandomForest, RandomForest_tuned
+
+**Tuning Impact Insights**:
+- KNeighbors: +0.081 R² improvement (largest gain)
+- RandomForest: -0.087 R² (tuning hurt performance)
+- Most models: marginal improvement from tuning
 
 ### ✅ PHASE 3 COMPLETE: TEXT FEATURES (November 24, 2025)
 
@@ -96,33 +144,99 @@
 - Early stopping to prevent overfitting
 - Parallel processing where supported (n_jobs=-1)
 
-### Active Tasks - PHASE 6: FINAL ANALYSIS & EVALUATION 📊
+### Active Tasks - PHASE 6: TWO-EXPERIMENT APPROACH 🔬
 
-**Current Focus**:
-1. [ ] Analyze enhanced_results_summary_20251205_123928.csv
-2. [ ] Compare all model variants (default vs tuned)
-3. [ ] Select best model per target based on validation performance
-4. [ ] Analyze feature importance for top models
-5. [ ] Run final evaluation on test set (ONCE)
+**Strategy Decision (December 5, 2025)**: PATH B - Two Independent Experiments
+
+We will conduct TWO complete experiments to compare baseline vs artist-enhanced features:
+
+## 🔵 EXPERIMENT 1: Baseline (No Artist Features)
+**Features**: 412 (audio + text + sentiment + embeddings)
+**Status**: Models trained, analysis COMPLETE, test evaluation PENDING
+
+**Tasks**:
+1. [x] Analyze enhanced_results_summary_20251205_123928.csv ✅
+2. [x] Compare all model variants (default vs tuned) ✅
+3. [x] Select best 1-2 models per target based on validation ✅
+4. [x] Feature importance analysis for selected models ✅
+5. [ ] Run test evaluation ONCE on selected models ← **NEXT STEP**
 6. [ ] Error analysis and visualization
+7. [ ] Archive results to `experiment1_no_artist/` folder
 
-### 📋 Artist Data Scripts (Available but NOT RUN)
+**Notebooks Created for Analysis**:
+- `04_enhanced_models_analysis.ipynb` - Model comparison & visualization ✅
+- `04-2_enhanced_models_analysis.ipynb` - Extended analysis ✅
+- `05_feature_importance_analysis.ipynb` - Feature importance extraction ✅
+
+**Script Ready for Final Step**:
+- `ml/models/test_evaluation_final.py` - Test set evaluation 🔜
+
+## 🟢 EXPERIMENT 2: With Artist Features (NEW)
+**Features**: 415+ (all previous + artist followers/popularity/count)
+**Status**: NOT STARTED - Will begin after Experiment 1 complete
+
+**Tasks**:
+1. [ ] Fetch artist data from Spotify API (`fetch_artist_data.py`)
+2. [ ] Add follower counts to dataset (`add_follower_counts.py`)
+3. [ ] Update preprocessing to include artist features
+4. [ ] Retrain ALL 28+ models from scratch with new features
+5. [ ] Analyze NEW validation results
+6. [ ] Select best 1-2 models per target from NEW experiment
+7. [ ] Feature importance analysis (focus on artist feature contribution)
+8. [ ] Run test evaluation ONCE on NEW selected models
+9. [ ] Compare Experiment 1 vs Experiment 2 results
+10. [ ] Archive results to `experiment2_with_artist/` folder
+
+### 📋 Artist Data Scripts
 
 **Scripts Ready**:
 - `scripts/scraping/fetch_artist_data.py` - Fetches artist metadata from Spotify API
+  - Gets: spotify_id, name, popularity, followers, genres
+  - Checkpoint/resume support for long-running fetch
+  - Rate limiting (2 req/s to avoid 429 errors)
 - `scripts/scraping/add_follower_counts.py` - Adds follower counts to songs dataset
+  - Calculates: total_artist_followers, artist_count, avg_artist_popularity
 
 **Purpose**:
-- Enrich dataset with artist-level features (followers, popularity, genres)
-- Could potentially improve popularity predictions
+- Conduct ablation study: Does artist fame improve predictions?
+- Expected impact: Likely improves POPULARITY, minimal effect on valence/energy/danceability
+- Research contribution: Quantify content vs context features
 
-**Status**: ⏸️ NOT YET EXECUTED - Available for future experimentation if needed
+**Status**: Ready to execute after Experiment 1 analysis complete
+
+### 📁 Project Structure - Two Experiments
+
+```
+ml/models/saved/
+├── experiment1_no_artist/          ← Archive after completion
+│   ├── XGBoost_tuned_valence.pkl
+│   ├── RandomForest_tuned_energy.pkl
+│   └── ... (28+ models)
+│
+└── experiment2_with_artist/        ← New models with artist features
+    ├── XGBoost_tuned_valence.pkl
+    ├── RandomForest_tuned_energy.pkl
+    └── ... (28+ models)
+
+results/metrics/
+├── experiment1_no_artist/
+│   ├── enhanced_results_summary.csv
+│   ├── test_results_final.csv      ← Test evaluation (once)
+│   └── feature_importance.csv
+│
+└── experiment2_with_artist/
+    ├── enhanced_results_summary.csv
+    ├── test_results_final.csv      ← New test evaluation (once)
+    ├── feature_importance.csv
+    └── comparison_with_exp1.csv
+```
 
 **Documentation Tasks** (HIGH PRIORITY):
 1. [ ] Get 10 similar theses for literature review
-2. [ ] Write thesis abstract
+2. [ ] Write thesis abstract (mention two-experiment approach)
 3. [ ] Document feature engineering methodology
-4. [ ] Create result comparison tables
+4. [ ] Create result comparison tables (Exp1 vs Exp2)
+5. [ ] Document ablation study findings (artist feature contribution)
 
 ## ✅ DECISION FINALIZED: Multi-Target Prediction
 

@@ -192,20 +192,48 @@
   - [x] Models saved to ml/models/saved/enhanced/
   - **Goal ACHIEVED**: Comprehensive algorithm comparison complete
 
-- [ ] **Phase 6: Final Evaluation & Analysis** (CURRENT PHASE)
-  - [x] Compare all feature combinations
-  - [ ] Analyze enhanced model results and select best models
-  - [ ] Test set evaluation (ONCE)
-  - [ ] Error analysis by genre/artist
-  - [ ] Feature importance analysis
-  - [ ] Visualizations for thesis
-
-- [ ] **Artist Data Enhancement** (NOT STARTED)
-  - [ ] Run fetch_artist_data.py to get artist metadata from Spotify API
-  - [ ] Run add_follower_counts.py to add follower counts to dataset
-  - [ ] Explore artist features (followers, popularity, genres)
-  - [ ] Evaluate impact of artist features on predictions
-  - **Status**: Scripts available but not yet executed
+- [ ] **Phase 6: Two-Experiment Approach** (CURRENT PHASE - December 7, 2025)
+  
+  **🔵 EXPERIMENT 1: Baseline Features (412 features)**
+  - [x] Models trained with current features ✅
+  - [x] Analyze validation results ✅ (notebook 04)
+  - [x] Select best models per target ✅
+  - [x] Feature importance analysis ✅ (notebook 05)
+  - [ ] Test set evaluation (ONCE) ← **NEXT STEP** (`test_evaluation_final.py` ready)
+  - [ ] Error analysis and visualization
+  - [ ] Archive to `ml/models/saved/experiment1_no_artist/`
+  - [ ] Archive results to `results/metrics/experiment1_no_artist/`
+  
+  **📓 Analysis Notebooks Created (December 5-7, 2025)**:
+  - `notebooks/04_enhanced_models_analysis.ipynb` ✅ EXECUTED
+  - `notebooks/04-2_enhanced_models_analysis.ipynb` ✅ EXECUTED
+  - `notebooks/05_feature_importance_analysis.ipynb` ✅ EXECUTED
+  
+  **📄 Test Evaluation Script Created**:
+  - `ml/models/test_evaluation_final.py` 🔜 READY TO RUN
+  
+  **📊 Key Results from Validation Analysis**:
+  - Best overall: XGBoost_tuned (3/4 targets)
+  - Best for popularity: CatBoost (R²=0.078)
+  - 12 models selected for final test evaluation
+  
+  **🟢 EXPERIMENT 2: + Artist Features (415+ features)**
+  - [ ] Fetch artist data from Spotify API (fetch_artist_data.py)
+  - [ ] Add follower counts to dataset (add_follower_counts.py)
+  - [ ] Update preprocessing pipeline for artist features
+  - [ ] Retrain ALL 28+ models from scratch
+  - [ ] Analyze NEW validation results
+  - [ ] Select best models from NEW experiment
+  - [ ] Feature importance analysis (artist contribution)
+  - [ ] Test set evaluation ONCE on NEW models
+  - [ ] Compare Experiment 1 vs Experiment 2
+  - [ ] Save to `ml/models/saved/experiment2_with_artist/`
+  - [ ] Save results to `results/metrics/experiment2_with_artist/`
+  
+  **Research Contribution**:
+  - Ablation study: Content features vs Artist context
+  - Hypothesis: Artist features improve popularity, minimal impact on valence/energy/danceability
+  - Each experiment gets independent test evaluation (scientifically valid)
 
 - [ ] **Evaluation Framework**
   - Artist-aware cross-validation (GroupKFold)
@@ -216,6 +244,15 @@
   - process_embeddings.py module with docstrings
   - EMBEDDINGS_README.md created
   - Feature files EDA notebook created
+
+- [x] **Notebook Styling Updates** (December 6, 2025)
+  - Applied academic publication style to all notebooks (300 DPI, serif fonts)
+  - Updated `03_feature_files_eda.ipynb` correlation analysis
+    - Combined correlation matrix: Audio (no genres) + Text Stats + Sentiment
+    - 18×18 clean matrix for thesis figures
+    - Embeddings summary statistics (too large for full heatmap)
+  - Styled `04_enhanced_models_analysis.ipynb` with publication quality plots
+  - Styled `05_feature_importance_analysis.ipynb` with consistent formatting
 
 - [ ] **Thesis Writing** (HIGH PRIORITY)
   - [ ] Abstract (this week)
