@@ -192,33 +192,41 @@
   - [x] Models saved to ml/models/saved/enhanced/
   - **Goal ACHIEVED**: Comprehensive algorithm comparison complete
 
-- [ ] **Phase 6: Two-Experiment Approach** (CURRENT PHASE - December 7, 2025)
+- [x] **Phase 6: Experiment 1 - Baseline Features** ✅ COMPLETE (December 9, 2025)
   
-  **🔵 EXPERIMENT 1: Baseline Features (412 features)**
+  **🔵 EXPERIMENT 1: Baseline Features (412 features)** ✅ COMPLETE
   - [x] Models trained with current features ✅
   - [x] Analyze validation results ✅ (notebook 04)
   - [x] Select best models per target ✅
   - [x] Feature importance analysis ✅ (notebook 05)
-  - [ ] Test set evaluation (ONCE) ← **NEXT STEP** (`test_evaluation_final.py` ready)
-  - [ ] Error analysis and visualization
-  - [ ] Archive to `ml/models/saved/experiment1_no_artist/`
-  - [ ] Archive results to `results/metrics/experiment1_no_artist/`
+  - [x] Test set evaluation (ONCE) ✅ **COMPLETED December 9, 2025**
+  - [ ] Error analysis and visualization ← **OPTIONAL**
+  - [ ] Archive to `ml/models/saved/experiment1_no_artist/` ← **OPTIONAL**
+  - [ ] Archive results to `results/metrics/experiment1_no_artist/` ← **OPTIONAL**
   
   **📓 Analysis Notebooks Created (December 5-7, 2025)**:
   - `notebooks/04_enhanced_models_analysis.ipynb` ✅ EXECUTED
   - `notebooks/04-2_enhanced_models_analysis.ipynb` ✅ EXECUTED
   - `notebooks/05_feature_importance_analysis.ipynb` ✅ EXECUTED
   
-  **📄 Test Evaluation Script Created**:
-  - `ml/models/test_evaluation_final.py` 🔜 READY TO RUN
+  **📄 Test Evaluation Executed (December 9, 2025)**:
+  - `ml/models/test_evaluation_final.py` ✅ EXECUTED
+  - Results: `test_evaluation_final_20251209_144747.csv`
+  - Best models: `best_models_test_20251209_144747.csv`
+  - Comparison: `test_vs_validation_comparison_20251209_144747.csv`
+  - Visualizations: 3 figures (R² heatmap, RMSE comparison, performance charts)
   
-  **📊 Key Results from Validation Analysis**:
-  - Best overall: XGBoost_tuned (3/4 targets)
-  - Best for popularity: CatBoost (R²=0.078)
-  - 12 models selected for final test evaluation
+  **📊 FINAL TEST SET RESULTS (THESIS NUMBERS)**:
+  - **Energy**: XGBoost_tuned, R²=0.8468, RMSE=0.0945
+  - **Danceability**: XGBoost_tuned, R²=0.6185, RMSE=0.1061
+  - **Valence**: XGBoost_tuned, R²=0.4742, RMSE=0.1805
+  - **Popularity**: CatBoost, R²=0.0696, RMSE=1.4139
+  - Test samples: 82,274 songs | Models evaluated: 12
   
-  **🟢 EXPERIMENT 2: + Artist Features (415+ features)**
-  - [ ] Fetch artist data from Spotify API (fetch_artist_data.py)
+- [ ] **Phase 7: Experiment 2 - With Artist Features** (NEXT MAJOR PHASE)
+  
+  **🟢 EXPERIMENT 2: + Artist Features (415+ features)** ← **NEXT AFTER EXPERIMENT 1**
+  - [ ] Fetch artist data from Spotify API (fetch_artist_data.py) ← **START HERE**
   - [ ] Add follower counts to dataset (add_follower_counts.py)
   - [ ] Update preprocessing pipeline for artist features
   - [ ] Retrain ALL 28+ models from scratch
@@ -234,6 +242,25 @@
   - Ablation study: Content features vs Artist context
   - Hypothesis: Artist features improve popularity, minimal impact on valence/energy/danceability
   - Each experiment gets independent test evaluation (scientifically valid)
+
+### Next Immediate Tasks (December 9, 2025)
+
+**Option A: Continue with Experiment 2 (Recommended)**
+1. [ ] Run `scripts/scraping/fetch_artist_data.py` to get artist metadata from Spotify API
+2. [ ] Run `scripts/scraping/add_follower_counts.py` to add artist features to dataset
+3. [ ] Update preprocessing pipeline for 415+ features
+4. [ ] Retrain all models and compare with Experiment 1
+
+**Option B: Thesis Writing (Can start in parallel)**
+1. [ ] Write abstract (mention two-experiment approach + final results)
+2. [ ] Start literature review (gather 10 similar papers)
+3. [ ] Document methodology section
+4. [ ] Create results tables with final test numbers
+
+**Option C: Error Analysis (Optional, for deeper insights)**
+1. [ ] Create notebook for residual analysis
+2. [ ] Analyze errors by genre, year, valence range
+3. [ ] Identify failure cases and patterns
 
 - [ ] **Evaluation Framework**
   - Artist-aware cross-validation (GroupKFold)
