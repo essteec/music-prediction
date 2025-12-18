@@ -1,10 +1,10 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (December 9, 2025)
+## Current Sprint (December 18, 2025)
 
-### 🎉 EXPERIMENT 1 COMPLETE - FINAL TEST RESULTS OBTAINED!
+### 🎉 EXPERIMENT 1 FULLY COMPLETE + ARTIST DATA READY!
 
-**Status Update (December 9, 2025)**:
+**Status Update (December 18, 2025)**:
 - ✅ **Data Collection COMPLETE**: All scraping finished!
 - ✅ **Validation COMPLETE**: Comprehensive validation framework created
 - ✅ **Cleaning COMPLETE**: Data cleaned and validated (732,988 songs)
@@ -21,10 +21,13 @@
 - ✅ **Enhanced Models Analysis COMPLETE**: Created and executed analysis notebooks
 - ✅ **Feature Importance Analysis COMPLETE**: Extracted importance from 12 selected models
 - ✅ **TEST EVALUATION COMPLETE**: Final test results obtained (December 9, 2025)!
-- 🔥 **Next Phase**: Error analysis OR start Experiment 2 (artist features)
-- ⏸️ **Artist Data Scripts**: fetch_artist_data.py and add_follower_counts.py available but NOT YET RUN
+- ✅ **ERROR ANALYSIS COMPLETE**: Comprehensive error analysis notebook created (December 18, 2025)!
+- ✅ **ARTIST DATA COLLECTION COMPLETE**: 3-level Spotify API scraping + intelligent merging (December 18, 2025)!
+- ✅ **ARTIST DATA INTEGRATION COMPLETE**: add_follower_counts.py with robust parsing & filtering (December 18, 2025)!
+- 🔥 **Next Phase**: Process artist features OR start thesis writing
+- 💾 **Dataset Ready**: english_ml_ready_with_followers.csv (with artist metadata)
 
-### 📓 New Notebooks Created (December 5-7, 2025)
+### 📓 Notebooks Created (December 5-18, 2025)
 
 1. **`notebooks/04_enhanced_models_analysis.ipynb`** ✅ EXECUTED
    - Comprehensive analysis of 28+ enhanced models across 4 targets
@@ -42,10 +45,21 @@
    - Feature group importance analysis
    - Model comparison heatmaps
 
-4. **`ml/models/test_evaluation_final.py`** 🔜 READY TO RUN
+4. **`ml/models/test_evaluation_final.py`** ✅ EXECUTED (December 9, 2025)
    - Final test set evaluation script
-   - Will evaluate 12 selected models on held-out test set
-   - ONE-TIME execution for final thesis results
+   - Evaluated 12 selected models on held-out test set
+   - ONE-TIME execution completed
+
+5. **`notebooks/06_error_analysis.ipynb`** ✅ CREATED & EXECUTED (December 18, 2025)
+   - Comprehensive error analysis with academic publication styling
+   - Residual analysis (predicted vs actual, error distribution, residual plots)
+   - Error segmentation by genre (10 genres analyzed)
+   - Error segmentation by decade (temporal analysis)
+   - Error segmentation by target value range (quintile analysis)
+   - Prediction bias analysis (over/under-prediction at extremes)
+   - Failure case identification (worst 15 predictions per target)
+   - Generated 9 publication-quality figures saved to `results/figures/`
+   - Summary statistics saved to `results/metrics/error_analysis_summary.csv`
 
 ### 📊 Key Findings from Analysis (December 5-9, 2025)
 
@@ -338,27 +352,54 @@ This is a **methodology contribution** valuable for future music prediction rese
 - [x] Documented baseline results
 - [x] Compared encoding methods (median imputation vs proper mapping - identical performance)
 
-### 🔥 Current Phase
+### 🔥 Current Phase: Experiment 2 Preparation (December 18, 2025)
 
-**Phase 3: Lightweight Text Features** (IN PROGRESS - November 14, 2025)
-- [ ] Extract text statistics (word count, unique ratio, avg word length, char count)
-  - Script: `ml/preprocessing/text_statistics.py`
-  - Time: ~5 minutes
-  - Output: 5 features per song
-- [ ] Extract sentiment (TextBlob for English)
-  - Script: `ml/preprocessing/sentiment_features.py`
-  - Model: `TextBlob`
-  - Time: ~10-20 minutes (fast for English)
-  - Output: 2 features per song (polarity, subjectivity)
-- [ ] Retrain XGBoost with audio + text features
-- [ ] Evaluate improvement (target: ΔRMSE > 0.01 for valence)
-- [ ] **Success Criteria**: Valence R² improves from 0.29 → 0.40+
+**✅ ARTIST DATA COLLECTION COMPLETE!**
 
-**Phase 4: Embedding-Based Text Features** (UPCOMING)
-- [ ] Compute embeddings **ONCE** (all-MiniLM-L6-v2 for English)
-- [ ] **Cache to disk** with joblib (MANDATORY)
-- [ ] Train XGBoost + LightGBM
-- [ ] Evaluate semantic improvement
+**Completed Steps**:
+1. ✅ **3-Level Spotify API Scraping** (December 18, 2025)
+   - Level 1: `fetch_artist_data.py` - Direct artist name search
+   - Level 2: `fetch_artist_data_for_failed.py` - Exact match only (stricter)
+   - Level 3: `fetch_artist_data_for_failed_v2.py` - Track-based with fuzzy matching
+   - Result: ~95,000+ artists with followers, popularity, genres, spotify_id
+
+2. ✅ **Intelligent Artist Merge** (December 18, 2025)
+   - Script: `merge_artist_files.py`
+   - Features:
+     - Max followers/popularity selection
+     - Name merging with semicolons (Artist1;Artist2;Artist3)
+     - Genre union across duplicates
+     - Spotify_name conflict detection (flagged in terminal)
+   - Output: `artists_merged.csv` (deduplicated, enriched)
+   - Log: `artists_merge_duplicates.log` (differences only)
+
+3. ✅ **Artist Data Integration** (December 18, 2025)
+   - Script: `add_follower_counts.py` (fully refactored)
+   - Features:
+     - Robust parsing (lists, semicolons, mixed formats)
+     - Normalized lookup (lowercase + stripped)
+     - Failed artist filtering (drops songs with all-failed artists)
+   - New columns:
+     - `total_artist_followers`: Sum of all matched artists
+     - `avg_artist_popularity`: Average popularity (float)
+     - `artist_ids`: JSON list of Spotify IDs
+     - `niche_genres`: Union of all genres (JSON list)
+   - Output: `english_ml_ready_with_followers.csv`
+   - Logs:
+     - `logs/songs_no_artists_detected.txt`
+     - `logs/songs_no_artists_failure.txt`
+     - `logs/songs_unknown_error.txt`
+
+**Next Steps** ← **START HERE**:
+1. [ ] Create artist feature preprocessing script
+   - [ ] Extract 3+ new features from artist data
+   - [ ] Normalize/scale artist features
+   - [ ] Combine with existing 412 features → 415+ total
+2. [ ] Retrain all 28+ models with new feature set
+3. [ ] Compare Experiment 1 vs Experiment 2 results
+4. [ ] Analyze artist feature contribution
+
+**Phase 3: Lightweight Text Features** ✅ COMPLETE (November 24, 2025)
 
 **Critical Rules**:
 - ✅ Use `GroupShuffleSplit` by artist_id (prevent data leakage)
