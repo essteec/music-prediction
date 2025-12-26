@@ -47,3 +47,20 @@
 - model: SVM best results (63.9% F-Measure)
 - keywords: Support Vector Machines, K-Nearest Neighbors , Naïve Bayes.
 
+**A Multimodal End-To-End Deep Learning Architecture for Music Popularity Prediction.**
+- link: https://www.researchgate.net/publication/339480731_A_Multimodal_End-To-End_Deep_Learning_Architecture_for_Music_Popularity_Prediction/citations
+- dataset: high-level audio features from Spotify, low-level audio features extracted from different audio representations such as Mel-spectrogram, Tonnetz, Chromagram or spectral centroids, a collection of text features directly gathered from lyrics, diverse information regarding artists such as the number of followers or his/her popularity, the popularity of each track and the genres associated to each track
+- model: neural networks (not important for us)
+- keywords: multimodal deep learning, audio features, lyrics, artist information
+
+**Catching the Earworm: Understanding Streaming Music Popularity Using Machine Learning Models**
+- link: https://www.e3s-conferences.org/articles/e3sconf/pdf/2021/29/e3sconf_eem2021_03024.pdf
+- dataset: 130,663 tracks from Spotify API
+- model: 0.831 Boosting tree, Random Forest and Neural Networks
+- keywords: music popularity, Boosting tree, Random Forest, Neural Networks
+
+**Beyond the Hook: Predicting Billboard Hot 100 Chart Inclusion with Machine Learning from Streaming, Audio Signals, and Perceptual Features**
+- link: https://arxiv.org/pdf/2509.24856
+- dataset: ?
+- model: Random Forest and XGBoost
+- keywords: Machine Learning · Digital music analytics · Music charts prediction · Spotify · cyclical encoding

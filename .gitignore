@@ -33,6 +33,7 @@ env/
 
 # Data Files (Large)
 *.csv
+*.jsonl
 *.json
 *.tsv
 *.parquet
