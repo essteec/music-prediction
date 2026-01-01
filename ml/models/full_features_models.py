@@ -1,13 +1,14 @@
 """
 Full Feature Models - Audio + Text Stats + Sentiment + Embeddings
-Trains models with ALL available features to find the best possible performance
+Experiment 2: Trains models with ALL available features including artist features
 
 Features:
-- Audio: 21 features (includes genre, year, cyclical key)
+- Audio: 23 features (includes genre, year, cyclical key, + 2 artist features)
+  - NEW: log_total_artist_followers, avg_artist_popularity
 - Text Stats: 5 features (word count, uniqueness, etc.)
 - Sentiment: 2 features (polarity, subjectivity)
 - Embeddings: 384 features (semantic vectors from all-MiniLM-L6-v2)
-- Total: 412 features
+- Total: 414 features
 
 Models:
 1. Mean Predictor (sanity check)
@@ -28,12 +29,12 @@ from pathlib import Path
 from datetime import datetime
 
 print("=" * 80)
-print("FULL FEATURE MODELS - ALL FEATURES COMBINED")
+print("FULL FEATURE MODELS - EXPERIMENT 2 (WITH ARTIST FEATURES)")
 print("=" * 80)
 
 # Paths
 features_dir = Path('../features')
-models_dir = Path('../models/saved')
+models_dir = Path('../models/saved/experiment2_with_artist')
 models_dir.mkdir(exist_ok=True, parents=True)
 
 results_dir = Path('../../results/metrics')
@@ -73,16 +74,16 @@ X_train = np.hstack([X_train_audio, X_train_text, X_train_sentiment, X_train_emb
 X_val = np.hstack([X_val_audio, X_val_text, X_val_sentiment, X_val_embeddings])
 
 print(f"\n{'=' * 80}")
-print(f"COMBINED FEATURE MATRIX")
+print(f"COMBINED FEATURE MATRIX - EXPERIMENT 2")
 print(f"{'=' * 80}")
 print(f"Train: {X_train.shape}")
 print(f"Val:   {X_val.shape}")
 print(f"\nFeature breakdown:")
-print(f"  - Audio:      21 features (genre, year, cyclical key, audio features)")
+print(f"  - Audio:      23 features (genre, year, cyclical key, audio, + artist)")
 print(f"  - Text Stats:  5 features (word count, uniqueness, avg length, etc.)")
 print(f"  - Sentiment:   2 features (polarity, subjectivity)")
 print(f"  - Embeddings: 384 features (semantic vectors)")
-print(f"  - TOTAL:      412 features")
+print(f"  - TOTAL:      414 features (+2 artist features)")
 print(f"{'=' * 80}")
 
 # Define targets
@@ -241,14 +242,15 @@ print("=" * 80)
 
 results_df = pd.DataFrame(all_results)
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-results_path = results_dir / f'full_features_results_{timestamp}.csv'
+results_path = results_dir / 'experiment2_with_artist' / f'full_features_results_{timestamp}.csv'
+results_path.parent.mkdir(exist_ok=True, parents=True)
 results_df.to_csv(results_path, index=False)
 
 print(f"\n✅ Results saved to: {results_path}")
 
 # Print final summary
 print("\n" + "=" * 80)
-print("OVERALL SUMMARY - FULL FEATURES (412 TOTAL)")
+print("OVERALL SUMMARY - EXPERIMENT 2 (414 FEATURES WITH ARTIST)")
 print("=" * 80)
 print("\nBest R² scores per target:")
 for target in targets:

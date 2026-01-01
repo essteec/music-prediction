@@ -1,8 +1,8 @@
-# Audio features (23 total)
+# Audio features (21 total)
 acousticness
 instrumentalness
-speechiness
 liveness
+speechiness
 loudness
 tempo
 duration_ms
@@ -20,5 +20,3 @@ genre_Jazz
 genre_Pop
 genre_R&B
 genre_Rock
-log_total_artist_followers
-avg_artist_popularity

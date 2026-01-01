@@ -1,4 +1,4 @@
-# 🎵 Music Attribute Prediction using ML
+# 🎵 Music Attribute Prediction using ML (this file is OUTDATED!)
 
 A comprehensive machine learning thesis comparing algorithms for predicting musical attributes from audio features and lyrics. Multi-target prediction study with 732K+ English songs.
 

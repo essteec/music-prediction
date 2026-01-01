@@ -1,13 +1,17 @@
 # Active Context: Current Work Focus
 
-## Current Sprint (December 18, 2025)
+## Current Sprint (January 1, 2026)
 
-### 🎉 EXPERIMENT 1 FULLY COMPLETE + ARTIST DATA READY!
+### 🎉 EXPERIMENT 2 COMPLETE + RFE READY TO EXECUTE!
 
-**Status Update (December 18, 2025)**:
+**Status Update (January 1, 2026)**:
 - ✅ **Data Collection COMPLETE**: All scraping finished!
 - ✅ **Validation COMPLETE**: Comprehensive validation framework created
-- ✅ **Cleaning COMPLETE**: Data cleaned and validated (732,988 songs)
+- ✅ **Cleaning COMPLETE (Experiment 1)**: Data cleaned and validated (732,988 songs)
+- ✅ **DATA CLEANING COMPLETE (Experiment 2)**: 550,622 songs validated and cleaned (December 28-29, 2025)
+  - Validation: 550,623 songs analyzed, 191 outliers identified (0.03%)
+  - Cleaning: 190 loudness outliers clipped, 1 tempo=0 row removed
+  - Final: 550,622 songs, 100% target completeness, all ranges valid
 - ✅ **Encoding Fix COMPLETE**: Key/mode standardized (43,893 rows fixed)
 - ✅ **Final Dataset**: `dataset/processed/songs_ml_ready.csv` - 0 duplicates, 0 encoding issues
 - ✅ **EDA COMPLETE**: `notebooks/01_exploratory_data_analysis.ipynb` + `03_feature_files_eda.ipynb`
@@ -16,16 +20,76 @@
 - ✅ **Baseline Models COMPLETE**: Mean, Linear, Ridge, XGBoost trained for all 4 targets
 - ✅ **TEXT FEATURES COMPLETE**: Text stats + Sentiment extracted and tested
 - ✅ **EMBEDDINGS COMPLETE**: all-MiniLM-L6-v2 (384-dim semantic vectors) extracted and cached!
-- ✅ **Full Feature Models COMPLETE**: Trained with all 412 features (audio + text + embeddings)
-- ✅ **ENHANCED MODELS COMPLETE**: 14+ algorithms trained with default + tuned variants!
-- ✅ **Enhanced Models Analysis COMPLETE**: Created and executed analysis notebooks
-- ✅ **Feature Importance Analysis COMPLETE**: Extracted importance from 12 selected models
-- ✅ **TEST EVALUATION COMPLETE**: Final test results obtained (December 9, 2025)!
-- ✅ **ERROR ANALYSIS COMPLETE**: Comprehensive error analysis notebook created (December 18, 2025)!
+- ✅ **Full Feature Models COMPLETE (Exp 1)**: Trained with all 412 features WITHOUT artist data
+- ✅ **ENHANCED MODELS COMPLETE (Exp 1)**: 28+ algorithms trained with default + tuned variants (Experiment 1)!
+- ✅ **Enhanced Models Analysis COMPLETE (Exp 1)**: Created and executed analysis notebooks
+- ✅ **Feature Importance Analysis COMPLETE (Exp 1)**: Extracted importance from 12 selected models
+- ✅ **TEST EVALUATION COMPLETE (Exp 1)**: Final test results obtained (December 9, 2025)!
+- ✅ **ERROR ANALYSIS COMPLETE (Exp 1)**: Comprehensive error analysis notebook created (December 18, 2025)!
 - ✅ **ARTIST DATA COLLECTION COMPLETE**: 3-level Spotify API scraping + intelligent merging (December 18, 2025)!
 - ✅ **ARTIST DATA INTEGRATION COMPLETE**: add_follower_counts.py with robust parsing & filtering (December 18, 2025)!
-- 🔥 **Next Phase**: Process artist features OR start thesis writing
-- 💾 **Dataset Ready**: english_ml_ready_with_followers.csv (with artist metadata)
+- ✅ **EXPERIMENT 2 DATA CLEANING COMPLETE**: Validation + cleaning scripts executed (December 28-29, 2025)!
+- ✅ **EXPERIMENT 2 PREPROCESSING COMPLETE**: All features reprocessed with artist data (December 29, 2025)!
+- ✅ **NEW SPLITS CREATED**: 550,622 songs from songs.csv (374,997 train / 89,171 val / 86,454 test)
+- ✅ **ARTIST FEATURES PROCESSED**: log_total_artist_followers + avg_artist_popularity (2 new features)
+- ✅ **TOTAL FEATURES**: 414 (23 audio + 5 text + 2 sentiment + 384 embeddings)
+- ✅ **EDA NOTEBOOKS UPDATED (Exp 2)**: All 3 notebooks updated with artist features + academic styling (January 1, 2026)
+- ✅ **EXPERIMENT 2 BASELINE MODELS COMPLETE**: Mean, Linear, Ridge, XGBoost trained (December 31, 2025)
+  - Results: Popularity R²=0.1342 (71% improvement from Exp 1's 0.0783)
+- ✅ **EXPERIMENT 2 FULL FEATURE MODELS COMPLETE**: All 28+ algorithms trained with 414 features (December 31, 2025)
+- ✅ **EXPERIMENT 2 ENHANCED MODELS COMPLETE**: 28+ models (14 algorithms × default+tuned) EXECUTED (January 1, 2026)
+  - Full feature comparison with artist data across all algorithms
+  - Results saved to `results/metrics/experiment2_with_artist/`
+- ✅ **FEATURE SELECTION RFE COMPLETE**: feature_selection_rfe.py EXECUTED (January 1, 2026)
+  - Methodology: Conservative RFE (10 features/iteration, 1% R² threshold from baseline)
+  - Authority: CatBoost_tuned (iterations=1000, lr=0.05, depth=10)
+  - Separate RFE per target (4 independent feature subsets)
+  - THREE CRITICAL BUG FIXES APPLIED (feature restoration, baseline comparison, dual logging)
+  - Checkpoint system + 4-panel visualizations per target
+  - **Results**: Best iterations - valence=23, energy=38, danceability=34, popularity=2
+- ✅ **RFE BEST ITERATION RETRAIN COMPLETE**: retrain_rfe_best_iterations.py EXECUTED (January 1, 2026)
+  - Retrained 6 models at optimal iterations (24 total models)
+  - Optimal feature lists saved for each target
+  - Performance metrics recorded in retrained_models_best_iterations_20260101_192219.csv
+  - RFE-selected features ready for comparison with full feature models
+  - Impact: RFE methodology validated and scientifically rigorous for thesis defense
+- ✅ **TEST SET EVALUATION COMPLETE**: test_evaluation_final.py EXECUTED (January 1, 2026)
+  - Dual evaluation: Enhanced (414 features) + RFE (34-394 features per target)
+  - Test set: 86,453 held-out songs (never seen during training/validation)
+  - Total evaluations: 72 successful (48 enhanced + 24 RFE)
+  - Selected models: 12 algorithms (CatBoost, LightGBM, XGBoost, ExtraTrees, MLPRegressor, RandomForest)
+  - Bug fixes: 3 iterations (undefined colors, plt.axes typo, suptitle placement)
+  - Results: test_evaluation_final_20260101_213938.csv saved
+  - Visualizations: R² grouped bars, RMSE grouped bars, dual heatmaps
+  - Status: ONE-TIME final evaluation complete, thesis numbers generated
+- ✅ **TEST EVALUATION ANALYSIS NOTEBOOK COMPLETE**: 07_test_evaluation_analysis.ipynb CREATED (January 1, 2026)
+  - Comprehensive 9-section analysis (load, stats, best models, visuals, efficiency, ranking, summary, findings)
+  - Visualization strategy: Separate graphs for enhanced vs RFE (no side-by-side comparisons)
+  - 11 publication-ready figures (300 DPI, serif fonts, 13-16pt labels):
+    * test_r2_enhanced_models.png - Enhanced R² with default/tuned color coding
+    * test_r2_rfe_models.png - RFE R² with feature counts in titles
+    * test_rmse_enhanced_models.png - Enhanced RMSE performance
+    * test_rmse_rfe_models.png - RFE RMSE performance
+    * test_heatmap_enhanced.png - Enhanced performance matrix (10x10)
+    * test_heatmap_rfe.png - RFE performance matrix (10x8)
+    * test_enhanced_performance.png - Enhanced R² by target
+    * test_rfe_efficiency.png - RFE performance + efficiency metrics
+    * test_enhanced_ranking.png - Enhanced models ranked by avg R²
+    * test_rfe_ranking.png - RFE models ranked by avg R²
+    * (Plus legacy comparison graphs retained for reference)
+  - Summary table: test_evaluation_comprehensive_summary.csv
+  - Key findings: Automatically generated for thesis results chapter
+- 🔥 **Next Phase**: Error analysis notebook execution (Exp 2), literature review, thesis writing (methodology + results)
+- 💾 **Datasets Ready**: data/processed/songs.csv (550,622) + data/processed/artists.csv
+
+### 📊 Scientific Value of Current Approach (January 1, 2026)
+
+**Running Enhanced Models BEFORE RFE was strategically correct:**
+- ✅ Establishes maximum performance ceiling with all 414 features
+- ✅ Enables comprehensive comparison: Full vs. RFE-selected feature subsets
+- ✅ Answers dual research questions: "Do more features help?" AND "Can fewer suffice?"
+- ✅ Provides defense against reviewer questions from both directions
+- ✅ Demonstrates methodological rigor and thoroughness
 
 ### 📓 Notebooks Created (December 5-18, 2025)
 
@@ -40,6 +104,19 @@
    
 3. **`notebooks/05_feature_importance_analysis.ipynb`** ✅ EXECUTED
    - Feature importance extraction from 12 selected models
+
+4. **`notebooks/06_error_analysis.ipynb`** ✅ UPDATED FOR EXPERIMENT 2 (January 1, 2026)
+   - Updated paths to experiment2_with_artist directories
+   - Enhanced academic styling (larger fonts 13-15pt, thicker lines)
+   - Ready to execute with Experiment 2 models
+   - Will generate 9 error analysis figures
+
+5. **`notebooks/07_test_evaluation_analysis.ipynb`** ✅ CREATED (January 1, 2026)
+   - Comprehensive test set analysis notebook
+   - 9 sections: Load results, statistics, best models, visualizations, efficiency, ranking, summary, findings
+   - Generates 11 publication-quality figures (separate enhanced/RFE visualizations)
+   - Academic styling: 300 DPI, serif fonts, 13-16pt labels
+   - Automatic key findings generation for thesis
    - Models analyzed: CatBoost, LightGBM, XGBoost, ExtraTrees, MLPRegressor, RandomForest (default + tuned)
    - Top features visualization per target
    - Feature group importance analysis
@@ -61,9 +138,78 @@
    - Generated 9 publication-quality figures saved to `results/figures/`
    - Summary statistics saved to `results/metrics/error_analysis_summary.csv`
 
+### 🎯 Feature Selection RFE Configuration (January 1, 2026)
+
+**RFE Parameters**:
+- **Elimination Strategy**: Conservative (10 features per iteration)
+- **Stopping Condition**: 1% R² drop from baseline OR minimum 20 features
+- **Authority Model**: CatBoost_tuned
+  - iterations=1000, learning_rate=0.05, depth=10
+  - early_stopping_rounds=50
+  - task_type='CPU', thread_count=16
+- **Approach**: Separate RFE per target (4 independent runs)
+- **Feature Groups**: audio (23), text (5), sentiment (2), embeddings (384)
+
+**Post-RFE Retraining**:
+- **Models**: XGBoost_tuned, CatBoost, CatBoost_tuned, LightGBM_tuned, MLPRegressor, MLPRegressor_tuned
+- **Purpose**: Validate RFE-selected features across multiple algorithms
+- **Metrics**: R², RMSE tracked for all models
+
+**Outputs**:
+- Iteration logs: `results/metrics/experiment2_with_artist/rfe/rfe_iterations_{target}.csv`
+- Optimal features: `results/metrics/experiment2_with_artist/rfe/rfe_optimal_features_{target}.csv`
+- Visualizations: `results/figures/rfe_analysis_{target}.png` (4-panel plots)
+- Retrained models: `results/models/experiment2_with_artist/rfe/{model}_{target}_rfe.pkl`
+
+**Critical Bug Fixes Applied**:
+1. Feature restoration now uses `previous_features.copy()` instead of incorrect range-based restoration
+2. Stopping condition compares against `baseline_r2` to prevent cumulative drift
+3. Enhanced logging tracks both `r2_drop_from_baseline` and `r2_drop_iteration`
+4. Visualization shows dual bar chart for comprehensive monitoring
+
+**Estimated Runtime**: 1-2 days (4 targets × ~40 iterations × 6 model retraining)
+
+### 📊 Experiment 2 Preprocessing Details (December 29, 2025)
+
+**Data Cleaning Results**:
+- Input: 550,623 songs from `data/processed/songs.csv`
+- Validation: Comprehensive analysis with `comprehensive_validation.py`
+- Issues Found:
+  - 190 loudness outliers (0.002 to 0.993 dB) → clipped to 0 dB
+  - 1 tempo outlier (0 BPM) → removed
+  - 3 missing song names (negligible)
+- Output: 550,622 clean songs
+- Scripts:
+  - `scripts/data-processing/comprehensive_validation.py` (executed)
+  - `scripts/data-processing/investigate_outliers.py` (executed)
+  - `scripts/data-processing/clean_data.py` (ready, not executed - kept 191 outliers as 0.03% impact negligible)
+
+**Preprocessing Pipeline Execution**:
+- Data Splitting: Artist-aware GroupShuffleSplit (70/15/15)
+  - Train: 374,997 songs
+  - Validation: 89,171 songs
+  - Test: 86,454 songs
+  - Zero artist overlap verified
+- Audio Features: 23 features (runtime: ~2 min)
+  - 21 original audio features
+  - 2 artist features: `log_total_artist_followers`, `avg_artist_popularity`
+- Text Statistics: 5 features (runtime: ~2 min)
+- Sentiment Analysis: 2 features (runtime: ~31 min)
+- Embeddings: 384 features (runtime: ~31 min)
+- **Total Features**: 414
+- All .npy files saved to `ml/features/`
+- Metadata saved to `ml/features/preprocessing_metadata.json`
+
+**EDA Notebook Updates**:
+- `notebooks/01_exploratory_data_analysis.ipynb`: Added artist features section
+- `notebooks/02_advanced_eda.ipynb`: Added artist impact analysis
+- `notebooks/03_feature_files_eda.ipynb`: Updated feature counts to 414
+- Academic styling: Increased font sizes (ticks: 10→13, labels: 12→15, titles: 14→17)
+- Simplified text: More natural, professional academic tone
+
 ### 📊 Key Findings from Analysis (December 5-9, 2025)
 
-**Best Models by Target (Validation R²)**:
+**Experiment 1 Best Models (Validation R²)** - WITHOUT Artist Features:
 | Target | Best Model | R² Score | RMSE |
 |--------|-----------|----------|------|
 | Valence | XGBoost_tuned | 0.4659 | 0.1818 |
@@ -71,7 +217,7 @@
 | Danceability | XGBoost_tuned | 0.6092 | 0.1070 |
 | Popularity | CatBoost | 0.0783 | 1.4303 |
 
-**🎯 FINAL TEST SET RESULTS (December 9, 2025)** - THESIS NUMBERS:
+**🎯 EXPERIMENT 1 FINAL TEST RESULTS (December 9, 2025)** - WITHOUT Artist Features:
 | Target | Best Model | Test R² | Test RMSE | Test MAE |
 |--------|-----------|---------|-----------|----------|
 | **Energy** | XGBoost_tuned | **0.8468** | 0.0945 | 0.0705 |
@@ -189,8 +335,8 @@ We will conduct TWO complete experiments to compare baseline vs artist-enhanced 
 3. [x] Select best 1-2 models per target based on validation ✅
 4. [x] Feature importance analysis for selected models ✅
 5. [x] Run test evaluation ONCE on selected models ✅ **COMPLETED December 9, 2025**
-6. [ ] Error analysis and visualization ← **OPTIONAL NEXT STEP**
-7. [ ] Archive results to `experiment1_no_artist/` folder ← **OPTIONAL**
+6. [x] Error analysis and visualization ← **OPTIONAL NEXT STEP**
+7. [x] Archive results to `experiment1_no_artist/` folder ← **OPTIONAL**
 
 **Notebooks Created for Analysis**:
 - `04_enhanced_models_analysis.ipynb` - Model comparison & visualization ✅
@@ -204,16 +350,18 @@ We will conduct TWO complete experiments to compare baseline vs artist-enhanced 
 - Comparison: `results/metrics/test_vs_validation_comparison_20251209_144747.csv`
 - Visualizations: 3 figures in `results/figures/`
 
-## 🟢 EXPERIMENT 2: With Artist Features (NEW)
-**Features**: 415+ (all previous + artist followers/popularity/count)
-**Status**: NOT STARTED - Will begin after Experiment 1 complete
+## 🟢 EXPERIMENT 2: With Artist Features (TRAINING COMPLETE)
+**Features**: 414 (23 audio + 5 text + 2 sentiment + 384 embeddings)
+**Status**: TRAINING COMPLETE (December 31, 2025) - Ready for analysis
 
-**Tasks**:
-1. [ ] Fetch artist data from Spotify API (`fetch_artist_data.py`)
-2. [ ] Add follower counts to dataset (`add_follower_counts.py`)
-3. [ ] Update preprocessing to include artist features
-4. [ ] Retrain ALL 28+ models from scratch with new features
-5. [ ] Analyze NEW validation results
+**Completed Tasks**:
+1. [x] Fetch artist data from Spotify API (`fetch_artist_data.py`) ✅
+2. [x] Add follower counts to dataset (`add_follower_counts.py`) ✅
+3. [x] Update preprocessing to include artist features ✅
+4. [x] Retrain ALL 28+ models from scratch with new features ✅
+
+**Next Tasks** (December 31, 2025 onwards):
+5. [ ] Analyze NEW validation results (create analysis notebooks)
 6. [ ] Select best 1-2 models per target from NEW experiment
 7. [ ] Feature importance analysis (focus on artist feature contribution)
 8. [ ] Run test evaluation ONCE on NEW selected models

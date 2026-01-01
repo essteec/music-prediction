@@ -9,14 +9,15 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import GroupShuffleSplit
 from pathlib import Path
+import ast
 
 print("=" * 80)
-print("ARTIST-AWARE DATA SPLITTING")
+print("ARTIST-AWARE DATA SPLITTING (PRIMARY ARTIST)")
 print("=" * 80)
 
 # Paths (using REPO_ROOT for consistency)
 REPO_ROOT = Path(__file__).resolve().parents[2]
-data_path = REPO_ROOT / 'data' / 'processed' / 'english_ml_ready.csv'
+data_path = REPO_ROOT / 'data' / 'processed' / 'songs.csv'
 output_dir = REPO_ROOT / 'data' / 'processed'
 output_dir.mkdir(exist_ok=True)
 
@@ -24,11 +25,26 @@ output_dir.mkdir(exist_ok=True)
 print(f"\nLoading data from: {data_path}")
 df = pd.read_csv(data_path)
 print(f"Total songs: {len(df):,}")
-print(f"Unique artists: {df['artists'].nunique():,}")
 
-# Create artist groups
-# Use 'artists' column as the grouping variable
-groups = df['artists']
+# Helper to extract primary artist
+def get_primary_artist(artist_str):
+    try:
+        # Parse string representation of list "['Artist A', 'Artist B']"
+        artists = ast.literal_eval(artist_str)
+        if isinstance(artists, list) and len(artists) > 0:
+            return artists[0] # Return first artist
+        return str(artist_str) # Fallback
+    except:
+        return str(artist_str)
+
+# Create primary artist column for grouping
+print("Extracting primary artists for grouping...")
+df['primary_artist'] = df['artists'].apply(get_primary_artist)
+groups = df['primary_artist']
+n_primary_artists = df['primary_artist'].nunique()
+
+print(f"Unique artist combinations: {df['artists'].nunique():,}")
+print(f"Unique primary artists: {n_primary_artists:,}")
 
 print("\n" + "-" * 80)
 print("CREATING SPLITS (70% train, 15% val, 15% test)")
@@ -46,7 +62,7 @@ print(f"  Train: {len(df_train):,} songs ({len(df_train)/len(df)*100:.1f}%)")
 print(f"  Temp:  {len(df_temp):,} songs ({len(df_temp)/len(df)*100:.1f}%)")
 
 # Second split: val vs test (split temp 50/50)
-groups_temp = df_temp['artists']
+groups_temp = df_temp['primary_artist']
 gss2 = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
 val_idx, test_idx = next(gss2.split(df_temp, groups=groups_temp))
 
@@ -57,21 +73,21 @@ print(f"\nSecond split complete:")
 print(f"  Val:   {len(df_val):,} songs ({len(df_val)/len(df)*100:.1f}%)")
 print(f"  Test:  {len(df_test):,} songs ({len(df_test)/len(df)*100:.1f}%)")
 
-# Verify no artist overlap
-train_artists = set(df_train['artists'].unique())
-val_artists = set(df_val['artists'].unique())
-test_artists = set(df_test['artists'].unique())
+# Verify no artist overlap (using primary artist)
+train_artists = set(df_train['primary_artist'].unique())
+val_artists = set(df_val['primary_artist'].unique())
+test_artists = set(df_test['primary_artist'].unique())
 
 overlap_train_val = train_artists & val_artists
 overlap_train_test = train_artists & test_artists
 overlap_val_test = val_artists & test_artists
 
 print("\n" + "-" * 80)
-print("VERIFICATION: Artist Overlap Check")
+print("VERIFICATION: Primary Artist Overlap Check")
 print("-" * 80)
-print(f"Train artists: {len(train_artists):,}")
-print(f"Val artists:   {len(val_artists):,}")
-print(f"Test artists:  {len(test_artists):,}")
+print(f"Train primary artists: {len(train_artists):,}")
+print(f"Val primary artists:   {len(val_artists):,}")
+print(f"Test primary artists:  {len(test_artists):,}")
 print(f"\nOverlap between:")
 print(f"  Train & Val:  {len(overlap_train_val)} artists ✅ (should be 0)")
 print(f"  Train & Test: {len(overlap_train_test)} artists ✅ (should be 0)")
@@ -104,6 +120,11 @@ print("\n" + "-" * 80)
 print("SAVING SPLITS")
 print("-" * 80)
 
+# Drop the helper column before saving
+df_train = df_train.drop(columns=['primary_artist'])
+df_val = df_val.drop(columns=['primary_artist'])
+df_test = df_test.drop(columns=['primary_artist'])
+
 train_path = output_dir / 'train.csv'
 val_path = output_dir / 'val.csv'
 test_path = output_dir / 'test.csv'
@@ -121,10 +142,10 @@ print("\n" + "=" * 80)
 print("SPLIT COMPLETE!")
 print("=" * 80)
 print(f"\nFinal dataset sizes:")
-print(f"  Train: {len(df_train):,} songs ({len(df_train)/len(df)*100:.1f}%) - {len(train_artists):,} artists")
-print(f"  Val:   {len(df_val):,} songs ({len(df_val)/len(df)*100:.1f}%) - {len(val_artists):,} artists")
-print(f"  Test:  {len(df_test):,} songs ({len(df_test)/len(df)*100:.1f}%) - {len(test_artists):,} artists")
-print(f"  Total: {len(df):,} songs - {df['artists'].nunique():,} artists")
+print(f"  Train: {len(df_train):,} songs ({len(df_train)/len(df)*100:.1f}%) - {len(train_artists):,} primary artists")
+print(f"  Val:   {len(df_val):,} songs ({len(df_val)/len(df)*100:.1f}%) - {len(val_artists):,} primary artists")
+print(f"  Test:  {len(df_test):,} songs ({len(df_test)/len(df)*100:.1f}%) - {len(test_artists):,} primary artists")
+print(f"  Total: {len(df):,} songs - {n_primary_artists:,} primary artists")
 
 print("\n✅ Ready for baseline model training!")
 print("=" * 80)

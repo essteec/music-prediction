@@ -9,7 +9,7 @@ print("INVESTIGATING LOUDNESS, TEMPO, KEY & MODE OUTLIERS")
 print("=" * 80)
 
 # Read the data
-filepath = '../../data/processed/english_ml_ready.csv'
+filepath = '../../data/processed/songs.csv'
 print(f"\nReading: {filepath}")
 print("This may take a moment...\n")
 
@@ -162,6 +162,72 @@ print(f"\nNumeric mode outliers (outside 0 to 1): {len(mode_outliers)}")
 if len(mode_outliers) > 0:
     print(f"\nOutlier values:")
     print(mode_outliers.value_counts().head(20))
+
+# ARTIST FEATURES INVESTIGATION (EXPERIMENT 2)
+print("\n" + "-" * 80)
+print("ARTIST FEATURES INVESTIGATION (EXPERIMENT 2)")
+print("-" * 80)
+
+# Check if artist features exist
+if 'total_artist_followers' in df.columns:
+    print("\ntotal_artist_followers:")
+    print(f"  Total rows: {len(df)}")
+    print(f"  Non-null: {df['total_artist_followers'].notna().sum()}")
+    print(f"  Null: {df['total_artist_followers'].isna().sum()}")
+    
+    if df['total_artist_followers'].notna().any():
+        followers = df['total_artist_followers'].dropna()
+        print(f"  Min: {followers.min():,.0f}")
+        print(f"  Max: {followers.max():,.0f}")
+        print(f"  Mean: {followers.mean():,.0f}")
+        print(f"  Median: {followers.median():,.0f}")
+        
+        # Check for outliers
+        outliers = followers[followers > 100000000]  # > 100M
+        if len(outliers) > 0:
+            print(f"  Outliers (>100M): {len(outliers)}")
+else:
+    print("  total_artist_followers column not found (pre-Experiment 2 dataset)")
+
+if 'log_total_artist_followers' in df.columns:
+    print("\nlog_total_artist_followers:")
+    print(f"  Total rows: {len(df)}")
+    print(f"  Non-null: {df['log_total_artist_followers'].notna().sum()}")
+    print(f"  Null: {df['log_total_artist_followers'].isna().sum()}")
+    
+    if df['log_total_artist_followers'].notna().any():
+        log_followers = df['log_total_artist_followers'].dropna()
+        print(f"  Min: {log_followers.min():.2f}")
+        print(f"  Max: {log_followers.max():.2f}")
+        print(f"  Mean: {log_followers.mean():.2f}")
+        print(f"  Median: {log_followers.median():.2f}")
+        
+        # Check for outliers (expected range: 0-20)
+        outliers = log_followers[(log_followers < 0) | (log_followers > 20)]
+        if len(outliers) > 0:
+            print(f"  Outliers (outside 0-20): {len(outliers)}")
+else:
+    print("  log_total_artist_followers column not found (pre-Experiment 2 dataset)")
+
+if 'avg_artist_popularity' in df.columns:
+    print("\navg_artist_popularity:")
+    print(f"  Total rows: {len(df)}")
+    print(f"  Non-null: {df['avg_artist_popularity'].notna().sum()}")
+    print(f"  Null: {df['avg_artist_popularity'].isna().sum()}")
+    
+    if df['avg_artist_popularity'].notna().any():
+        popularity = df['avg_artist_popularity'].dropna()
+        print(f"  Min: {popularity.min():.2f}")
+        print(f"  Max: {popularity.max():.2f}")
+        print(f"  Mean: {popularity.mean():.2f}")
+        print(f"  Median: {popularity.median():.2f}")
+        
+        # Check for outliers (expected range: 0-100)
+        outliers = popularity[(popularity < 0) | (popularity > 100)]
+        if len(outliers) > 0:
+            print(f"  Outliers (outside 0-100): {len(outliers)}")
+else:
+    print("  avg_artist_popularity column not found (pre-Experiment 2 dataset)")
 
 print("\n" + "=" * 80)
 print("INVESTIGATION COMPLETE")

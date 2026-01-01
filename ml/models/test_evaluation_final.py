@@ -1,9 +1,13 @@
 """
-Final Test Evaluation for Selected Models
-==========================================
+Final Test Evaluation for Experiment 2 (With Artist Features)
+==============================================================
 ONE-TIME ONLY evaluation on test set for thesis final numbers.
 
-Selected Models (12 per target = 48 total):
+Evaluates TWO model sets:
+1. Enhanced Models: Full 414 features (23 audio + 5 text + 2 sentiment + 384 embeddings)
+2. RFE Models: Reduced features at optimal iterations (34-394 features per target)
+
+Selected Models (12 per target = 48 total, × 2 sets = 96 evaluations):
 - CatBoost, CatBoost_tuned
 - LightGBM, LightGBM_tuned  
 - XGBoost, XGBoost_tuned
@@ -15,7 +19,7 @@ Selected Models (12 per target = 48 total):
 Test set should never be used for model selection or tuning.
 
 Author: Thesis Project
-Date: December 6, 2025
+Date: January 1, 2026
 """
 
 import numpy as np
@@ -34,8 +38,9 @@ from sklearn.metrics import (
 # Set paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 FEATURES_DIR = PROJECT_ROOT / "ml" / "features"
-MODELS_DIR = PROJECT_ROOT / "ml" / "models" / "saved" / "enhanced"
-RESULTS_DIR = PROJECT_ROOT / "results" / "metrics"
+MODELS_DIR_ENHANCED = PROJECT_ROOT / "ml" / "models" / "saved" / "experiment2_with_artist"
+MODELS_DIR_RFE = PROJECT_ROOT / "ml" / "models" / "saved" / "experiment2_with_artist" / "rfe_best"
+RESULTS_DIR = PROJECT_ROOT / "results" / "metrics" / "experiment2_with_artist"
 FIGURES_DIR = PROJECT_ROOT / "results" / "figures"
 
 # Create directories
@@ -54,18 +59,47 @@ SELECTED_MODELS = [
 
 TARGETS = ['valence', 'energy', 'danceability', 'popularity']
 
+# RFE best iterations (from retrain_rfe_best_iterations.py)
+RFE_BEST_ITERATIONS = {
+    'valence': 23,
+    'energy': 38,
+    'danceability': 34,
+    'popularity': 2
+}
+
+
+def load_rfe_optimal_features(target, iteration):
+    """Load optimal feature indices for RFE models"""
+    rfe_results_dir = PROJECT_ROOT / "results" / "metrics" / "experiment2_with_artist" / "rfe_best"
+    
+    # Find the optimal features CSV for this target and iteration
+    pattern = f"optimal_features_{target}_iter{iteration}_*.csv"
+    matching_files = list(rfe_results_dir.glob(pattern))
+    
+    if not matching_files:
+        print(f"   ⚠️ Warning: No optimal features file found for {target} iter {iteration}")
+        return None
+    
+    # Use the most recent file
+    features_file = sorted(matching_files)[-1]
+    features_df = pd.read_csv(features_file)
+    optimal_indices = features_df['feature_index'].values
+    
+    return optimal_indices
+
 
 def load_test_data():
-    """Load test features and targets"""
+    """Load test features and targets (Experiment 2: 414 features with artist data)"""
     print("\n📁 Loading test data...")
     
     # Load all feature arrays
+    # Note: X_test_audio.npy contains 23 features (21 audio + 2 artist)
     X_test_audio = np.load(FEATURES_DIR / "X_test_audio.npy")
     X_test_text_stats = np.load(FEATURES_DIR / "X_test_text_stats.npy")
     X_test_sentiment = np.load(FEATURES_DIR / "X_test_sentiment.npy")
     X_test_embeddings = np.load(FEATURES_DIR / "X_test_embeddings.npy")
     
-    # Combine all features (same order as training)
+    # Combine all features: 23 audio+artist + 5 text + 2 sentiment + 384 embeddings = 414
     X_test = np.hstack([X_test_audio, X_test_text_stats, X_test_sentiment, X_test_embeddings])
     
     print(f"   Audio features: {X_test_audio.shape}")
@@ -83,7 +117,7 @@ def load_test_data():
     return X_test, y_test
 
 
-def evaluate_model(model, X_test, y_test, model_name, target):
+def evaluate_model(model, X_test, y_test, model_name, target, model_source='enhanced', num_features=414):
     """Comprehensive evaluation of a model on test set"""
     
     try:
@@ -113,6 +147,8 @@ def evaluate_model(model, X_test, y_test, model_name, target):
         return {
             'target': target,
             'model': model_name,
+            'model_source': model_source,
+            'num_features': num_features,
             'rmse': rmse,
             'mae': mae,
             'r2': r2,
@@ -136,27 +172,45 @@ def evaluate_model(model, X_test, y_test, model_name, target):
 def plot_test_results(results_df):
     """Create visualization of test results"""
     
-    # 1. R² comparison across all targets
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    colors = plt.cm.Set3(np.linspace(0, 1, len(SELECTED_MODELS)))
+    # 1. R² comparison across all targets (both enhanced and RFE)
+    fig, axes = plt.subplots(2, 2, figsize=(18, 14))
     
     for ax, target in zip(axes.flatten(), TARGETS):
         target_df = results_df[results_df['target'] == target].sort_values('r2', ascending=True)
         
-        bars = ax.barh(range(len(target_df)), target_df['r2'], color=colors, edgecolor='black')
-        ax.set_yticks(range(len(target_df)))
-        ax.set_yticklabels(target_df['model'])
-        ax.set_xlabel('R² Score (Test Set)', fontsize=11)
-        ax.set_title(f'{target.upper()} - Test Performance', fontsize=12, fontweight='bold')
+        # Separate enhanced and RFE
+        enhanced_df = target_df[target_df['model_source'] == 'enhanced']
+        rfe_df = target_df[target_df['model_source'] == 'rfe']
         
-        # Add value labels
-        for bar, val in zip(bars, target_df['r2']):
-            ax.text(max(val + 0.01, 0.01), bar.get_y() + bar.get_height()/2, 
-                    f'{val:.4f}', va='center', fontsize=9, fontweight='bold')
+        y_pos = np.arange(len(SELECTED_MODELS))
+        width = 0.35
         
+        # Plot grouped bars
+        for i, model in enumerate(SELECTED_MODELS):
+            enhanced_r2 = enhanced_df[enhanced_df['model'] == model]['r2'].values
+            rfe_r2 = rfe_df[rfe_df['model'] == model]['r2'].values
+            
+            if len(enhanced_r2) > 0:
+                ax.barh(i - width/2, enhanced_r2[0], width, label='Enhanced' if i == 0 else '', 
+                       color='#3498db', edgecolor='black', alpha=0.85)
+                ax.text(enhanced_r2[0] + 0.005, i - width/2, f'{enhanced_r2[0]:.3f}', 
+                       va='center', fontsize=8)
+            
+            if len(rfe_r2) > 0:
+                ax.barh(i + width/2, rfe_r2[0], width, label='RFE' if i == 0 else '', 
+                       color='#e74c3c', edgecolor='black', alpha=0.85)
+                ax.text(rfe_r2[0] + 0.005, i + width/2, f'{rfe_r2[0]:.3f}', 
+                       va='center', fontsize=8)
+        
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(SELECTED_MODELS, fontsize=9)
+        ax.set_xlabel('R² Score (Test Set)', fontsize=11, fontweight='bold')
+        ax.set_title(f'{target.upper()} - Enhanced vs RFE', fontsize=12, fontweight='bold')
+        ax.legend(loc='lower right', fontsize=9)
         ax.axvline(x=0, color='black', linewidth=0.5)
+        ax.grid(True, alpha=0.2, axis='x')
     
-    plt.suptitle('🧪 FINAL TEST SET EVALUATION - R² Scores', fontsize=14, fontweight='bold', y=1.02)
+    plt.suptitle('FINAL TEST SET EVALUATION - R² Scores (Enhanced vs RFE)', fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
     
     fig_path = FIGURES_DIR / "test_evaluation_r2.png"
@@ -164,23 +218,44 @@ def plot_test_results(results_df):
     plt.close(fig)
     print(f"   📈 Saved: test_evaluation_r2.png")
     
-    # 2. RMSE comparison
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    # 2. RMSE comparison (both enhanced and RFE)
+    fig, axes = plt.subplots(2, 2, figsize=(18, 14))
     
     for ax, target in zip(axes.flatten(), TARGETS):
         target_df = results_df[results_df['target'] == target].sort_values('rmse', ascending=False)
         
-        bars = ax.barh(range(len(target_df)), target_df['rmse'], color=colors, edgecolor='black')
-        ax.set_yticks(range(len(target_df)))
-        ax.set_yticklabels(target_df['model'])
-        ax.set_xlabel('RMSE (Test Set) - Lower is Better', fontsize=11)
-        ax.set_title(f'{target.upper()} - Test RMSE', fontsize=12, fontweight='bold')
+        # Separate enhanced and RFE
+        enhanced_df = target_df[target_df['model_source'] == 'enhanced']
+        rfe_df = target_df[target_df['model_source'] == 'rfe']
         
-        for bar, val in zip(bars, target_df['rmse']):
-            ax.text(val + 0.001, bar.get_y() + bar.get_height()/2, 
-                    f'{val:.4f}', va='center', fontsize=9)
+        y_pos = np.arange(len(SELECTED_MODELS))
+        width = 0.35
+        
+        # Plot grouped bars (lower is better for RMSE)
+        for i, model in enumerate(SELECTED_MODELS):
+            enhanced_rmse = enhanced_df[enhanced_df['model'] == model]['rmse'].values
+            rfe_rmse = rfe_df[rfe_df['model'] == model]['rmse'].values
+            
+            if len(enhanced_rmse) > 0:
+                ax.barh(i - width/2, enhanced_rmse[0], width, label='Enhanced' if i == 0 else '', 
+                       color='#3498db', edgecolor='black', alpha=0.85)
+                ax.text(enhanced_rmse[0] + 0.002, i - width/2, f'{enhanced_rmse[0]:.3f}', 
+                       va='center', fontsize=8)
+            
+            if len(rfe_rmse) > 0:
+                ax.barh(i + width/2, rfe_rmse[0], width, label='RFE' if i == 0 else '', 
+                       color='#e74c3c', edgecolor='black', alpha=0.85)
+                ax.text(rfe_rmse[0] + 0.002, i + width/2, f'{rfe_rmse[0]:.3f}', 
+                       va='center', fontsize=8)
+        
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(SELECTED_MODELS, fontsize=9)
+        ax.set_xlabel('RMSE (Test Set) - Lower is Better', fontsize=11, fontweight='bold')
+        ax.set_title(f'{target.upper()} - Enhanced vs RFE', fontsize=12, fontweight='bold')
+        ax.legend(loc='upper right', fontsize=9)
+        ax.grid(True, alpha=0.2, axis='x')
     
-    plt.suptitle('🧪 FINAL TEST SET EVALUATION - RMSE', fontsize=14, fontweight='bold', y=1.02)
+    plt.suptitle('TEST SET EVALUATION - RMSE', fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
     
     fig_path = FIGURES_DIR / "test_evaluation_rmse.png"
@@ -188,19 +263,39 @@ def plot_test_results(results_df):
     plt.close(fig)
     print(f"   📈 Saved: test_evaluation_rmse.png")
     
-    # 3. Heatmap of all metrics
-    fig, ax = plt.subplots(figsize=(16, 10))
+    # 3. Heatmap - separate for enhanced and RFE
+    fig, axes = plt.subplots(1, 2, figsize=(20, 10))
     
-    pivot_r2 = results_df.pivot(index='model', columns='target', values='r2')
-    pivot_r2 = pivot_r2[TARGETS]  # Order columns
-    pivot_r2 = pivot_r2.sort_values(pivot_r2.columns.tolist(), ascending=False)
+    # Enhanced models heatmap
+    enhanced_df = results_df[results_df['model_source'] == 'enhanced']
+    if len(enhanced_df) > 0:
+        pivot_enhanced = enhanced_df.pivot(index='model', columns='target', values='r2')
+        pivot_enhanced = pivot_enhanced[TARGETS]
+        pivot_enhanced = pivot_enhanced.sort_values(pivot_enhanced.columns.tolist(), ascending=False)
+        
+        sns.heatmap(pivot_enhanced, annot=True, fmt='.4f', cmap='RdYlGn', center=0.3,
+                    ax=axes[0], linewidths=0.5, vmin=-0.1, vmax=0.9,
+                    cbar_kws={'label': 'R² Score'})
+        axes[0].set_title('Enhanced Models (414 features)', fontsize=14, fontweight='bold')
+        axes[0].set_xlabel('Target Variable', fontsize=12)
+        axes[0].set_ylabel('Model', fontsize=12)
     
-    sns.heatmap(pivot_r2, annot=True, fmt='.4f', cmap='RdYlGn', center=0.3,
-                ax=ax, linewidths=0.5, vmin=-0.1, vmax=0.9,
-                cbar_kws={'label': 'R² Score'})
-    ax.set_title('🧪 TEST SET R² Scores - All Models', fontsize=14, fontweight='bold')
-    ax.set_xlabel('Target Variable', fontsize=12)
-    ax.set_ylabel('Model', fontsize=12)
+    # RFE models heatmap
+    rfe_df = results_df[results_df['model_source'] == 'rfe']
+    if len(rfe_df) > 0:
+        pivot_rfe = rfe_df.pivot(index='model', columns='target', values='r2')
+        pivot_rfe = pivot_rfe[TARGETS]
+        pivot_rfe = pivot_rfe.sort_values(pivot_rfe.columns.tolist(), ascending=False)
+        
+        sns.heatmap(pivot_rfe, annot=True, fmt='.4f', cmap='RdYlGn', center=0.3,
+                    ax=axes[1], linewidths=0.5, vmin=-0.1, vmax=0.9,
+                    cbar_kws={'label': 'R² Score'})
+        axes[1].set_title('RFE Models (34-394 features)', fontsize=14, fontweight='bold')
+        axes[1].set_xlabel('Target Variable', fontsize=12)
+        axes[1].set_ylabel('Model', fontsize=12)
+    
+    plt.suptitle('TEST SET R² Scores - Enhanced vs RFE', fontsize=16, fontweight='bold', y=0.98)
+    plt.tight_layout()
     
     plt.tight_layout()
     fig_path = FIGURES_DIR / "test_evaluation_heatmap.png"
@@ -239,10 +334,15 @@ def main():
     """Main test evaluation"""
     
     print("=" * 70)
-    print("🧪 FINAL TEST SET EVALUATION")
+    print("🧪 FINAL TEST SET EVALUATION - EXPERIMENT 2")
     print("=" * 70)
     print("⚠️  WARNING: This should be run ONLY ONCE!")
     print("⚠️  Test set results are FINAL numbers for thesis!")
+    print("")
+    print("📊 Evaluating TWO model sets:")
+    print("   1. Enhanced Models: 414 features (full)")
+    print("   2. RFE Models: 34-394 features (optimal iterations)")
+    print("   Dataset: 86,454 test songs")
     print("=" * 70)
     
     # Confirmation prompt
@@ -262,21 +362,52 @@ def main():
     all_results = []
     
     for target in TARGETS:
-        print(f"\n🎯 Evaluating {target.upper()}...")
+        print(f"\n{'='*70}")
+        print(f"🎯 TARGET: {target.upper()}")
+        print(f"{'='*70}")
+        
+        # Load RFE optimal features for this target
+        rfe_iteration = RFE_BEST_ITERATIONS[target]
+        rfe_features = load_rfe_optimal_features(target, rfe_iteration)
+        
+        if rfe_features is not None:
+            X_test_rfe = X_test[:, rfe_features]
+            print(f"   RFE features loaded: {len(rfe_features)} features (iteration {rfe_iteration})")
+        else:
+            X_test_rfe = None
+            print(f"   ⚠️ RFE features not available for {target}")
         
         for model_name in SELECTED_MODELS:
-            model_path = MODELS_DIR / f"{model_name}_{target}.pkl"
+            # 1. Evaluate ENHANCED model (full features)
+            model_path_enhanced = MODELS_DIR_ENHANCED / f"{model_name}_{target}.pkl"
+            # 1. Evaluate ENHANCED model (full features)
+            model_path_enhanced = MODELS_DIR_ENHANCED / f"{model_name}_{target}.pkl"
             
-            if not model_path.exists():
-                print(f"   ⚠️ Model not found: {model_path.name}")
-                continue
+            if model_path_enhanced.exists():
+                model = joblib.load(model_path_enhanced)
+                result = evaluate_model(model, X_test, y_test[target], model_name, target, 
+                                       model_source='enhanced', num_features=414)
+                
+                if result:
+                    all_results.append(result)
+                    print(f"   ✅ [Enhanced] {model_name}: R²={result['r2']:.4f}, RMSE={result['rmse']:.4f}")
+            else:
+                print(f"   ⚠️ Enhanced model not found: {model_path_enhanced.name}")
             
-            model = joblib.load(model_path)
-            result = evaluate_model(model, X_test, y_test[target], model_name, target)
-            
-            if result:
-                all_results.append(result)
-                print(f"   ✅ {model_name}: R²={result['r2']:.4f}, RMSE={result['rmse']:.4f}")
+            # 2. Evaluate RFE model (reduced features)
+            if X_test_rfe is not None:
+                model_path_rfe = MODELS_DIR_RFE / f"{model_name}_{target}_iter{rfe_iteration}.pkl"
+                
+                if model_path_rfe.exists():
+                    model = joblib.load(model_path_rfe)
+                    result = evaluate_model(model, X_test_rfe, y_test[target], model_name, target,
+                                           model_source='rfe', num_features=len(rfe_features))
+                    
+                    if result:
+                        all_results.append(result)
+                        print(f"   ✅ [RFE]      {model_name}: R²={result['r2']:.4f}, RMSE={result['rmse']:.4f} ({len(rfe_features)} features)")
+                else:
+                    print(f"   ⚠️ RFE model not found: {model_path_rfe.name}")
     
     if not all_results:
         print("\n❌ No results collected. Check if models exist.")
@@ -311,13 +442,25 @@ def main():
     
     for target in TARGETS:
         target_df = results_df[results_df['target'] == target]
-        best = target_df.loc[target_df['r2'].idxmax()]
+        
+        # Best enhanced model
+        enhanced_df = target_df[target_df['model_source'] == 'enhanced']
+        if len(enhanced_df) > 0:
+            best_enhanced = enhanced_df.loc[enhanced_df['r2'].idxmax()]
+        
+        # Best RFE model
+        rfe_df = target_df[target_df['model_source'] == 'rfe']
+        if len(rfe_df) > 0:
+            best_rfe = rfe_df.loc[rfe_df['r2'].idxmax()]
         
         print(f"\n🎯 {target.upper()}:")
-        print(f"   Best Model: {best['model']}")
-        print(f"   R² = {best['r2']:.4f}")
-        print(f"   RMSE = {best['rmse']:.4f}")
-        print(f"   MAE = {best['mae']:.4f}")
+        if len(enhanced_df) > 0:
+            print(f"   Best Enhanced (414 features): {best_enhanced['model']} - R²={best_enhanced['r2']:.4f}, RMSE={best_enhanced['rmse']:.4f}")
+        if len(rfe_df) > 0:
+            print(f"   Best RFE ({int(best_rfe['num_features'])} features):     {best_rfe['model']} - R²={best_rfe['r2']:.4f}, RMSE={best_rfe['rmse']:.4f}")
+            if len(enhanced_df) > 0:
+                r2_diff = best_rfe['r2'] - best_enhanced['r2']
+                print(f"   RFE vs Enhanced: {r2_diff:+.4f} R² ({(r2_diff/best_enhanced['r2']*100):+.2f}%)")
     
     # Create final summary table
     print("\n" + "=" * 70)

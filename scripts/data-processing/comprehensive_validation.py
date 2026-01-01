@@ -164,6 +164,35 @@ COLUMN_SPECS = {
         'null_allowed': True,  # Old songs may lack
         'ml_impact': 'HIGH',
         'target': True  # TARGET 🎯
+    },
+    
+    # Artist features (Experiment 2)
+    'artist_ids': {
+        'type': 'string',
+        'null_allowed': True,  # Some songs may lack artist data
+        'ml_impact': None,  # Used for grouping only
+        'target': False
+    },
+    'total_artist_followers': {
+        'type': 'int',
+        'range': (0, 150000000),  # Max ~150M followers
+        'null_allowed': True,
+        'ml_impact': 'HIGH',
+        'target': False
+    },
+    'log_total_artist_followers': {
+        'type': 'float',
+        'range': (0.0, 20.0),  # log(1) to log(150M)
+        'null_allowed': True,
+        'ml_impact': 'HIGH',
+        'target': False
+    },
+    'avg_artist_popularity': {
+        'type': 'float',
+        'range': (0.0, 100.0),
+        'null_allowed': True,
+        'ml_impact': 'HIGH',
+        'target': False
     }
 }
 
@@ -478,11 +507,13 @@ if __name__ == "__main__":
     reports_dir = Path('../../docs/reports')
     reports_dir.mkdir(exist_ok=True)
 
-    enhanced_path = data_dir / 'processed/english_ml_ready.csv' # 'raw/songs_enhanced_full.csv'
-    report_path = reports_dir / 'comprehensive_validation_english_report_01.txt'
+    enhanced_path = data_dir / 'processed/songs.csv'
+    report_path = reports_dir / 'comprehensive_validation_exp2_report.txt'
     
     # Run analysis
-    print("Starting comprehensive validation analysis...\n")
+    print("Starting comprehensive validation analysis (Experiment 2 - with artist features)...\n")
+    print(f"Dataset: {enhanced_path}")
+    print(f"Report will be saved to: {report_path}\n")
     stats = analyze_dataset(enhanced_path, chunksize=50000)
     
     # Generate report

@@ -1,5 +1,7 @@
 """
 Enhanced Models - Comprehensive Algorithm Comparison
+EXPERIMENT 2 (WITH ARTIST FEATURES)
+
 Trains 14+ algorithms with default and tuned variants for complete comparison
 
 Algorithms:
@@ -18,7 +20,7 @@ Algorithms:
 13. SVR with RBF kernel (default + tuned)
 14. MLP Regressor (default + tuned)
 
-Features: ALL 412 features (audio + text + sentiment + embeddings)
+Features: ALL 414 features (23 audio with artist + 5 text + 2 sentiment + 384 embeddings)
 Outputs:
 - results_summary.csv: Basic metrics (RMSE, MAE, R²)
 - results_detailed.csv: Extended metrics with training time, predictions stats
@@ -59,15 +61,15 @@ import json
 import sys
 
 print("=" * 80)
-print("ENHANCED MODEL TRAINING - COMPREHENSIVE ALGORITHM COMPARISON")
+print("ENHANCED MODEL TRAINING - EXPERIMENT 2 (WITH ARTIST FEATURES)")
 print("=" * 80)
 
 # Paths
 features_dir = Path('../features')
-models_dir = Path('../models/saved/enhanced')
+models_dir = Path('../models/saved/experiment2_with_artist')
 models_dir.mkdir(exist_ok=True, parents=True)
 
-results_dir = Path('../../results/metrics')
+results_dir = Path('../../results/metrics/experiment2_with_artist')
 results_dir.mkdir(exist_ok=True, parents=True)
 
 # Checkpoint paths
@@ -112,11 +114,11 @@ X_train = np.hstack([X_train_audio, X_train_text, X_train_sentiment, X_train_emb
 X_val = np.hstack([X_val_audio, X_val_text, X_val_sentiment, X_val_embeddings])
 
 print(f"\n{'=' * 80}")
-print(f"COMBINED FEATURE MATRIX")
+print(f"COMBINED FEATURE MATRIX - EXPERIMENT 2")
 print(f"{'=' * 80}")
 print(f"Train: {X_train.shape}")
 print(f"Val:   {X_val.shape}")
-print(f"Total Features: 412")
+print(f"Total Features: 414 (23 audio with artist + 5 text + 2 sentiment + 384 embeddings)")
 print(f"{'=' * 80}")
 
 # Define targets
@@ -387,12 +389,12 @@ def save_results_to_csv(summary_results, detailed_results, timestamp):
     """Save results to CSV files immediately"""
     # Summary CSV
     summary_df = pd.DataFrame(summary_results)
-    summary_path = results_dir / f'enhanced_results_summary_{timestamp}.csv'
+    summary_path = results_dir / f'experiment2_enhanced_results_summary_{timestamp}.csv'
     summary_df.to_csv(summary_path, index=False)
     
     # Detailed CSV
     detailed_df = pd.DataFrame(detailed_results)
-    detailed_path = results_dir / f'enhanced_results_detailed_{timestamp}.csv'
+    detailed_path = results_dir / f'experiment2_enhanced_results_detailed_{timestamp}.csv'
     detailed_df.to_csv(detailed_path, index=False)
     
     return summary_path, detailed_path

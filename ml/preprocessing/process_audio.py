@@ -46,15 +46,28 @@ SCALE_FEATURES = ["loudness", "tempo", "duration_ms", "year"]
 CATEGORICAL_FEATURES = ["mode"]
 CYCLICAL_FEATURES = ["key"]
 GENRE_FEATURE = ["genre"]
+# Artist features (new for Experiment 2)
+ARTIST_FEATURES = ["log_total_artist_followers", "avg_artist_popularity"]
 
 
 def _load_splits() -> Dict[str, pd.DataFrame]:
     """Load train/val/test splits."""
-    return {
+    splits = {
         "train": pd.read_csv(PROCESSED_DIR / "train.csv"),
         "val": pd.read_csv(PROCESSED_DIR / "val.csv"),
         "test": pd.read_csv(PROCESSED_DIR / "test.csv"),
     }
+    
+    # Add artist features (log transform followers, keep avg_popularity as-is)
+    for df in splits.values():
+        # Handle missing artist features
+        df['total_artist_followers'] = df.get('total_artist_followers', 0).fillna(0)
+        df['avg_artist_popularity'] = df.get('avg_artist_popularity', 0).fillna(0)
+        
+        # Log transform followers (add 1 to handle zeros)
+        df['log_total_artist_followers'] = np.log1p(df['total_artist_followers'])
+    
+    return splits
 
 
 def _encode_key_cyclical(df: pd.DataFrame) -> None:
@@ -71,7 +84,7 @@ def _handle_missing_values(splits: Dict[str, pd.DataFrame]) -> None:
     """Fill missing values using training set statistics."""
     train = splits["train"]
     
-    numeric_features = SKEWED_FEATURES + NORMALIZED_FEATURES + SCALE_FEATURES + CATEGORICAL_FEATURES
+    numeric_features = SKEWED_FEATURES + NORMALIZED_FEATURES + SCALE_FEATURES + CATEGORICAL_FEATURES + ARTIST_FEATURES
     for feat in numeric_features:
         if train[feat].isnull().any():
             median_val = train[feat].median()
@@ -120,7 +133,10 @@ def _build_feature_matrix(
     else:
         X_genre = encoder.transform(df[GENRE_FEATURE])
     
-    return np.hstack([X_power, X_normalized, X_scaled, X_categorical, X_cyclical, X_genre])
+    # Artist features (already log-transformed and normalized)
+    X_artist = df[ARTIST_FEATURES].to_numpy(copy=False)
+    
+    return np.hstack([X_power, X_normalized, X_scaled, X_categorical, X_cyclical, X_genre, X_artist])
 
 
 def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
@@ -219,6 +235,7 @@ def process_audio_features(verbose: bool = True) -> Dict[str, np.ndarray]:
         + CATEGORICAL_FEATURES
         + ["key_sin", "key_cos"]
         + [f"genre_{cat}" for cat in encoder.categories_[0]]
+        + ARTIST_FEATURES  # Artist features last
     )
     
     with open(FEATURES_DIR / "audio_feature_names.txt", "w") as f:

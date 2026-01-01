@@ -1,6 +1,10 @@
 """
-Baseline Models - Audio Features Only
-Trains baseline models for all 4 targets using only audio features
+Baseline Models - Audio Features (Including Artist Features)
+Experiment 2: Trains baseline models for all 4 targets using audio features + artist features
+
+Features:
+- Audio: 23 features (includes genre, year, cyclical key, artist features)
+  - NEW: log_total_artist_followers, avg_artist_popularity
 
 Models:
 1. Mean Predictor (sanity check)
@@ -21,12 +25,12 @@ from pathlib import Path
 from datetime import datetime
 
 print("=" * 80)
-print("BASELINE MODEL TRAINING - AUDIO FEATURES ONLY")
+print("BASELINE MODEL TRAINING - EXPERIMENT 2 (WITH ARTIST FEATURES)")
 print("=" * 80)
 
 # Paths
 features_dir = Path('../features')
-models_dir = Path('../models/saved')
+models_dir = Path('../models/saved/experiment2_with_artist')
 models_dir.mkdir(exist_ok=True, parents=True)
 
 results_dir = Path('../../results/metrics')
@@ -39,6 +43,7 @@ X_val = np.load(features_dir / 'X_val_audio.npy')
 
 print(f"Train features: {X_train.shape}")
 print(f"Val features:   {X_val.shape}")
+print(f"\n Audio features: 23 (includes 2 artist features)")
 
 # Define targets
 targets = ['valence', 'energy', 'danceability', 'popularity']
@@ -191,7 +196,8 @@ print("SAVING RESULTS")
 print("=" * 80)
 
 results_df = pd.DataFrame(all_results)
-results_path = results_dir / f'baseline_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+results_path = results_dir / 'experiment2_with_artist' / f'baseline_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+results_path.parent.mkdir(exist_ok=True, parents=True)
 results_df.to_csv(results_path, index=False)
 
 print(f"✅ Results saved to: {results_path}")
