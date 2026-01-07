@@ -1,0 +1,26 @@
+# Requirements for Gradio Music Prediction App
+
+# Core dependencies (already in main requirements.txt)
+numpy>=1.24.0
+pandas>=1.5.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+catboost>=1.2.0
+lightgbm>=4.1.0
+joblib>=1.3.0
+
+# NLP (already in main requirements.txt)
+textblob>=0.17.0
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# NEW: Audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+audioread>=3.0.0
+
+# NEW: Web interface
+gradio>=4.0.0
+
+# Optional: For better audio format support
+ffmpeg-python>=0.2.0
