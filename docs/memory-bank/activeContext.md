@@ -2,9 +2,9 @@
 
 ## 📅 Current Status
 
-**Phase**: Phase 0 - PyTorch MLP Baseline ✅ **COMPLETE**
-**Status**: Weighted MLP baseline established - Ready for Phase 1
-**Next**: Phase 1 - BERT Fine-tuning for Lyrics
+**Phase**: Phase 1B - MPNet Training ✅ **COMPLETE**
+**Status**: MPNet showed modest improvement (+4.3% avg R²) - Decision point reached
+**Next**: Phase 2 - Architecture Improvements (recommended path)
 
 ---
 
@@ -94,6 +94,96 @@ dl/
 - MLP R² within 5% of ML baseline (tabular MLP rarely beats gradient boosting)
 - Proves DL pipeline works
 - Ready for Phase 1 improvements
+
+---
+
+## ✅ Phase 1B: MPNet Training (COMPLETE)
+
+### Timeline
+- **Started**: March 31, 2026
+- **Completed**: March 31, 2026
+- **Duration**: ~2 hours training
+
+### Results Summary (Test Set)
+| Target | Phase 0 (414) | Phase 1B (798) | Improvement | ML Gap |
+|--------|---------------|----------------|-------------|---------|
+| Valence | 0.3500 | **0.3792** | +2.9% | -15.8% |
+| Energy | 0.7500 | **0.7539** | +0.5% | -6.9% |
+| Danceability | 0.4700 | **0.4978** | +5.9% | -9.5% |
+| Popularity | 0.1200 | **0.1311** | +9.3% | +0.8% |
+| **Average** | 0.4225 | **0.4405** | **+4.3%** | **-8.4%** |
+
+### Key Takeaways
+- ✅ **MPNet helped**: Modest but real improvement from better embeddings
+- ✅ **Valence gained most**: +2.9% from better text understanding (expected)
+- ✅ **Popularity matched ML**: First target to reach ML baseline parity
+- ⚠️ **Still behind ML**: 8.4% average gap remains (tabular data challenge)
+- ⚠️ **Diminishing returns**: BERT fine-tuning unlikely to close gap alone
+
+### Critical Decision
+**Skip Phase 1C (BERT fine-tuning)** - Text improvements alone won't beat ML
+**Proceed to Phase 2** - Architecture improvements for bigger gains
+
+---
+
+## ✅ Phase 1A: MPNet Embeddings (COMPLETE)
+
+### Timeline
+- **Started**: March 31, 2026
+- **Completed**: March 31, 2026 (4 hours runtime)
+- **Duration**: 1 day
+
+### Final Results
+
+**MPNet Embeddings Extracted:**
+- `mpnet_lyrics_768d_train.npy` - 374,997 songs, 1098.6 MB
+- `mpnet_lyrics_768d_val.npy` - 89,172 songs, 261.2 MB  
+- `mpnet_lyrics_768d_test.npy` - 86,453 songs, 253.3 MB
+- **Total**: 1.6GB of 768-d embeddings for all 550K songs
+
+### Implementation
+
+**Model**: sentence-transformers/all-mpnet-base-v2
+- Proven Microsoft model for semantic text understanding
+- 768-d embeddings (double the 384-d MiniLM from Phase 0)
+- Max sequence length: 512 tokens (~3000 characters)
+- Better semantic understanding than frozen MiniLM
+
+**Technical Details:**
+- Batch size: 32 (conservative for 6GB VRAM)
+- Processing time: ~4 hours for 550K songs
+- Checkpoint logic: Skips existing files (rerun-safe)
+- Memory management: torch.cuda.empty_cache() between splits
+- Lyrics truncated to 3000 chars to fit 512 token limit
+
+**Files Created:**
+```
+dl/03_extract_better_embeddings.py  # Extraction script (207 lines)
+data/embeddings/
+├── mpnet_lyrics_768d_train.npy
+├── mpnet_lyrics_768d_val.npy
+└── mpnet_lyrics_768d_test.npy
+```
+
+### Key Decisions
+
+1. **MPNet over DistilBERT**: Sentence-transformers models optimized for embeddings, no fine-tuning needed initially
+2. **Frozen embeddings first**: Validate improvement before investing in fine-tuning
+3. **GTE model skipped**: CUDA compatibility issues with rotary positional embeddings - MPNet sufficient
+4. **Feature count**: 798 total (23 audio + 5 text + 2 sentiment + 768 MPNet vs 414 in Phase 0)
+
+### Why This Will Help
+
+- **Better semantic understanding**: MPNet trained on large corpus for semantic similarity
+- **Double the capacity**: 768-d vs 384-d captures richer lyric meaning
+- **Expected improvement**: Valence R² (0.45 → 0.50+) from better text understanding
+- **No training needed**: Frozen embeddings = fast to test
+
+### Next Phase Prerequisites
+
+1. ✅ **MPNet embeddings ready**: All 3 splits extracted
+2. ⏳ **Create training script**: `dl/04_train_mlp_with_mpnet.py`
+3. ⏳ **Compare to Phase 0**: Evaluate 798-feature model vs 414-feature baseline
 
 ---
 

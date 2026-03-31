@@ -1,4 +1,8 @@
 # Semester 2 Deep Learning Plan
+
+CRITICAL NOTE:
+ THIS is the external outdated reference for the Semester 2 plan. DO NOT blindly follow this - check ROADMAP.md for the current plan. This file is preserved for archival reference but may not reflect the latest priorities or adjustments made during the semester.
+
 ## Music Prediction Project — Extension of HitMusicNet (IEEE Access, 2020)
 
 ---

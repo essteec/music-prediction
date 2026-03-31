@@ -4,7 +4,7 @@
 Beat Semester 1 ML baseline using Deep Learning neural networks
 
 ## 📊 Current Phase
-Phase 0 - PyTorch MLP Baseline (Starting)
+Phase 1A - MPNet Embeddings ✅ **COMPLETE**
 
 ---
 
@@ -135,11 +135,57 @@ results/dl_metrics/
 
 ---
 
-## Phase 1: Lyrics Deep Learning
+## Phase 1A: MPNet Embeddings ✅ COMPLETE
 
-**Goal**: Improve text understanding with transformer models (biggest opportunity for Valence)
+**Goal**: Replace MiniLM-L6-v2 (384-d) with MPNet (768-d) for better semantic understanding
 
-### Current Limitation
+**Status**: ✅ Complete (March 31, 2026)
+
+### Results Achieved
+
+**MPNet Embeddings Extracted:**
+- Train: 374,997 songs → 1098.6 MB
+- Val: 89,172 songs → 261.2 MB  
+- Test: 86,453 songs → 253.3 MB
+- **Total**: 1.6GB of 768-d embeddings for all 550K songs
+
+**Model**: sentence-transformers/all-mpnet-base-v2
+- 768-d embeddings (2× Phase 0's 384-d MiniLM)
+- Better semantic understanding from Microsoft's training
+- Frozen (no fine-tuning needed initially)
+
+**Technical Details:**
+- Batch size: 32 (6GB VRAM conservative)
+- Processing: 4 hours runtime, ~1.09 it/s
+- Checkpoint logic: Rerun-safe
+- Script: `dl/03_extract_better_embeddings.py` (207 lines)
+
+### Key Decisions
+
+1. **MPNet over GTE**: GTE had CUDA compatibility issues, MPNet proven
+2. **Frozen first**: Test improvement before fine-tuning investment  
+3. **Feature count**: 798 total (23 audio + 5 text + 2 sentiment + 768 MPNet)
+
+### Expected Improvement
+- Valence R²: 0.45 → 0.50+ (better emotion understanding from lyrics)
+- Energy/Danceability: Minimal change (not lyric-dependent)
+
+### Files Created
+```
+dl/03_extract_better_embeddings.py       # Extraction script
+data/embeddings/mpnet_lyrics_768d_*.npy  # 3 files (train/val/test)
+```
+
+### Next: Phase 1B
+Train MLP with MPNet embeddings and compare to Phase 0 baseline
+
+---
+
+## Phase 1B: Train MLP with MPNet (NEXT)
+
+**Goal**: Train MusicMLP on 798 features (798 vs 414 in Phase 0) and compare performance
+
+### Approach
 - MiniLM embeddings are frozen (384-d, zero-shot)
 - No task-specific tuning for music prediction
 
