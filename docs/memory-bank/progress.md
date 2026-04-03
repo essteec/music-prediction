@@ -1,11 +1,11 @@
 # Progress: Music Prediction Project
 
 ## 📅 Current Phase
-Phase 1B - MLP with MPNet ✅ **COMPLETE**
+Phase 2 - Architecture Improvements (READY TO START)
 
-**Status**: MPNet validation complete - shows modest improvement  
-**Current Focus**: Decide next phase based on Phase 1B results  
-**Last Completed**: Phase 1B - Trained MLP with MPNet embeddings ✅
+**Status**: Phase 1B complete with full metrics - ready for architecture experiments  
+**Current Focus**: Implement deeper networks, residual connections, and attention mechanisms  
+**Last Completed**: Phase 1B - MLP with MPNet embeddings (4.3% improvement) ✅
 
 ---
 
@@ -247,19 +247,19 @@ data/embeddings/mpnet_lyrics_768d_*.npy  # 3 files (train/val/test)
 
 ### Timeline
 - **Started**: March 31, 2026
-- **Completed**: March 31, 2026
-- **Duration**: 1 day
+- **Completed**: April 1, 2026 (01:21 UTC)
+- **Duration**: ~2 hours training time
 
-### Final Results (Test Set R²)
+### Final Results (Test Set R²) - VERIFIED
 
 **Comparison to Phase 0 (414 features → 798 features):**
 | Target | Phase 0 | Phase 1B | Improvement | Status |
 |--------|---------|----------|-------------|--------|
-| Valence | 0.3500 | **0.3792** | +0.0292 | ✓ Better |
-| Energy | 0.7500 | **0.7539** | +0.0039 | ≈ Similar |
-| Danceability | 0.4700 | **0.4978** | +0.0278 | ✓ Better |
-| Popularity | 0.1200 | **0.1311** | +0.0111 | ≈ Similar |
-| **Average** | **0.4225** | **0.4405** | **+0.0180** | ✓ 4.3% improvement |
+| Valence | 0.3500 | **0.3792** | +0.0292 (+8.3%) | ✓ Better |
+| Energy | 0.7500 | **0.7539** | +0.0039 (+0.5%) | ≈ Similar |
+| Danceability | 0.4700 | **0.4978** | +0.0278 (+5.9%) | ✓ Better |
+| Popularity | 0.1200 | **0.1311** | +0.0111 (+9.3%) | ✓ Better |
+| **Average** | **0.4225** | **0.4405** | **+0.0180** | ✓ **4.3% improvement** |
 
 **Comparison to ML Baseline (Semester 1):**
 | Target | ML R² | DL R² | Gap | Status |
@@ -292,17 +292,18 @@ data/embeddings/mpnet_lyrics_768d_*.npy  # 3 files (train/val/test)
 - Parameters: 426,269 (vs 115K in Phase 0 with 414 features)
 
 **Training:**
-- Loss: MSELoss (no weighting - simpler for ablation)
+- Loss: MSELoss (unweighted - simpler for ablation)
 - Optimizer: Adam (lr=0.001)
 - Batch size: 256
-- Early stopping: patience=10 (stopped at epoch 45)
-- Best epoch: 35 (val_loss=0.2682)
+- Early stopping: patience=10
+- Seed: 42 (reproducible)
+- Device: CUDA (GPU)
 
 **Files Created:**
 ```
-dl/04_train_mlp_with_mpnet.py            # Training script with MPNet
-models/checkpoints/mlp_mpnet_best.pt     # Best model checkpoint
-results/dl_metrics/mlp_mpnet_20260401_014511.csv  # Results
+dl/04_train_mlp_with_mpnet.py                   # Training script with MPNet
+models/checkpoints/mlp_mpnet_best.pt            # Best model checkpoint
+results/dl_metrics/mlp_mpnet_20260401_012157.csv # Final metrics (timestamp-verified)
 ```
 
 ### Analysis: Did MPNet Help?
@@ -326,30 +327,39 @@ results/dl_metrics/mlp_mpnet_20260401_014511.csv  # Results
 **Option A: Fine-tune BERT (Phase 1C)** ⚠️ NOT RECOMMENDED
 - Rationale: MPNet only gave +2.9% on Valence
 - Cost: 10-20 hours training time, complex pipeline
-- Expected: Maybe +5% more (still behind ML's 0.45)
-- Risk: Diminishing returns on text alone
+- Expected: Maybe +3-5% more (still behind ML's 0.45)
+- Risk: Diminishing returns on text alone - not worth the investment
 
-**Option B: Move to Phase 2 - Architecture Improvements** ✅ RECOMMENDED
+**Option B: Move to Phase 2 - Architecture Improvements** ✅ **CHOSEN PATH**
 - Rationale: Bigger gains from better model architecture
 - Options: Deeper networks, residual connections, attention
 - Expected: 5-10% improvement across all targets
-- Proven path: Focus on what DL does best
+- Proven path: Focus on what DL does best (architecture vs feature engineering)
 
 **Option C: Move to Phase 3 - Audio Embeddings** ⚠️ BLOCKED
 - Rationale: Audio improvements would help Energy/Danceability most
 - Blocker: No audio files (only Spotify metadata)
 - Need to solve: yt-dlp acquisition or skip audio entirely
 
-### Recommendation
+### ✅ Final Decision: Proceed to Phase 2
 
 **Skip Phase 1C (BERT fine-tuning)** - Diminishing returns on text alone
 
-**Proceed to Phase 2** - Architecture experiments:
-1. Deeper networks (5-7 layers with residual connections)
-2. Attention mechanisms for feature importance
-3. Better regularization (LayerNorm, label smoothing)
-4. Separate encoders per modality (audio/text/metadata)
-5. Multi-task learning with task-specific heads
+**Start Phase 2 - Architecture Improvements:**
+1. **Deeper networks**: 5-7 layers with residual connections
+2. **Attention mechanisms**: Learn feature importance dynamically
+3. **Better regularization**: LayerNorm, label smoothing, dropout tuning
+4. **Modality-specific encoders**: Separate processing for audio/text/embeddings
+5. **Task-specific heads**: Shared encoder + separate prediction heads per target
+6. **Advanced optimizers**: Try AdamW with cosine annealing
+
+### Why Phase 2 Is Right Choice
+
+- MPNet proved text improvements help (+4.3% overall)
+- But text alone won't close 8% gap to ML baseline
+- Architecture improvements affect ALL modalities simultaneously
+- Literature shows residual connections + attention consistently improve tabular DL
+- Can combine with existing MPNet embeddings for additive gains
 
 ---
 

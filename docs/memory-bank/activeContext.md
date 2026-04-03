@@ -2,9 +2,10 @@
 
 ## 📅 Current Status
 
-**Phase**: Phase 1B - MPNet Training ✅ **COMPLETE**
-**Status**: MPNet showed modest improvement (+4.3% avg R²) - Decision point reached
-**Next**: Phase 2 - Architecture Improvements (recommended path)
+**Phase**: Phase 2 - Architecture Improvements (READY TO START)
+**Status**: Phase 1B complete with verified metrics - all prerequisites met
+**Next**: Implement deeper networks with residual connections and attention
+**Decision**: Skipping Phase 1C (BERT fine-tuning) - architecture improvements offer better ROI
 
 ---
 
@@ -101,28 +102,31 @@ dl/
 
 ### Timeline
 - **Started**: March 31, 2026
-- **Completed**: March 31, 2026
-- **Duration**: ~2 hours training
+- **Completed**: April 1, 2026 (01:21 UTC)
+- **Duration**: ~2 hours training time
 
-### Results Summary (Test Set)
-| Target | Phase 0 (414) | Phase 1B (798) | Improvement | ML Gap |
-|--------|---------------|----------------|-------------|---------|
-| Valence | 0.3500 | **0.3792** | +2.9% | -15.8% |
-| Energy | 0.7500 | **0.7539** | +0.5% | -6.9% |
-| Danceability | 0.4700 | **0.4978** | +5.9% | -9.5% |
-| Popularity | 0.1200 | **0.1311** | +9.3% | +0.8% |
-| **Average** | 0.4225 | **0.4405** | **+4.3%** | **-8.4%** |
+### Results Summary (Test Set) - VERIFIED
+| Target | Phase 0 (414) | Phase 1B (798) | Δ R² | % Gain | ML Gap |
+|--------|---------------|----------------|------|--------|---------|
+| Valence | 0.3500 | **0.3792** | +0.0292 | +8.3% | -15.8% |
+| Energy | 0.7500 | **0.7539** | +0.0039 | +0.5% | -6.9% |
+| Danceability | 0.4700 | **0.4978** | +0.0278 | +5.9% | -9.5% |
+| Popularity | 0.1200 | **0.1311** | +0.0111 | +9.3% | +0.8% |
+| **Average** | 0.4225 | **0.4405** | **+0.0180** | **+4.3%** | **-8.4%** |
+
+**Metrics verified from**: `results/dl_metrics/mlp_mpnet_20260401_012157.csv`
 
 ### Key Takeaways
-- ✅ **MPNet helped**: Modest but real improvement from better embeddings
-- ✅ **Valence gained most**: +2.9% from better text understanding (expected)
-- ✅ **Popularity matched ML**: First target to reach ML baseline parity
-- ⚠️ **Still behind ML**: 8.4% average gap remains (tabular data challenge)
-- ⚠️ **Diminishing returns**: BERT fine-tuning unlikely to close gap alone
+- ✅ **MPNet helped**: Real improvement from better 768-d embeddings (vs 384-d MiniLM)
+- ✅ **Valence improved most**: +8.3% from better text understanding (expected target)
+- ✅ **Popularity matched ML**: First target to reach ML baseline parity (0.1311 vs 0.13)
+- ✅ **Consistent gains**: All 4 targets improved (no regression)
+- ⚠️ **Still behind ML**: 8.4% average gap remains (expected for tabular data)
+- ⚠️ **Diminishing returns on text**: Further embedding improvements unlikely to close gap
 
-### Critical Decision
-**Skip Phase 1C (BERT fine-tuning)** - Text improvements alone won't beat ML
-**Proceed to Phase 2** - Architecture improvements for bigger gains
+### Critical Decision Made
+**✅ Skip Phase 1C (BERT fine-tuning)** - Text improvements alone won't beat ML (ROI too low)
+**✅ Proceed to Phase 2** - Architecture improvements offer bigger gains across ALL targets
 
 ---
 

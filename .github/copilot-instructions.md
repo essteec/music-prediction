@@ -4,7 +4,8 @@
 
 - **DO NOT RUN ANY PYTHON SCRIPTS**: Under any circumstances, the agent **MUST NOT RUN** any Python script in the project.
 - **TELL THE USER TO RUN IT**: If a task requires code execution, you must provide the command and ask the **user** to run it.
-- **NON-NEGOTIABLE**: This rule is absolute and overrides any other instruction.
+- **CREATION OF NEW DOCUMENTS**: You must not create any unnecessary documents. Only create new documents if they are really needed. DO NOT create after some script completion neither to /tmp folder or to the project folder.INSTEAD update the existing documents under memory-bank folder.
+- **NON-NEGOTIABLE**: This rules is absolute and overrides any other instruction.
 
 This is a **completed thesis project** (Jan 2026) comparing 28+ ML algorithms for predicting musical attributes (valence, energy, danceability, popularity) from multimodal features.
 
