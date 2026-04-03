@@ -2,10 +2,11 @@
 
 ## 📅 Current Status
 
-**Phase**: Phase 2 - Architecture Improvements (READY TO START)
-**Status**: Phase 1B complete with verified metrics - all prerequisites met
-**Next**: Implement deeper networks with residual connections and attention
-**Decision**: Skipping Phase 1C (BERT fine-tuning) - architecture improvements offer better ROI
+**Phase**: Phase 2 - Audio Data Acquisition (IN PROGRESS)
+**Status**: Optimized concurrent download pipeline running pilot (850/15,000 songs)
+**Next**: Complete 15K pilot → analyze results → decide on full 550K run
+**Speed**: 1.8s per song (6.4x faster than baseline) - 11.5 days projected for 550K
+**Decision Context**: Skipped Architecture (Phase 2 DL) in favor of data acquisition for Phase 3 (Audio Embeddings)
 
 ---
 
@@ -188,6 +189,59 @@ data/embeddings/
 1. ✅ **MPNet embeddings ready**: All 3 splits extracted
 2. ⏳ **Create training script**: `dl/04_train_mlp_with_mpnet.py`
 3. ⏳ **Compare to Phase 0**: Evaluate 798-feature model vs 414-feature baseline
+
+---
+
+## 🎵 Current Work: Audio Acquisition Pipeline
+
+### What We're Doing Right Now
+
+**Downloading audio files from YouTube** to enable Phase 3 (Audio Embeddings):
+- Target: 550,622 songs
+- Current progress: 850/15,000 pilot (5.7%)
+- Speed: 1.8s per song (optimized from 11.57s baseline)
+- Storage: ~4MB per song (Opus/WebM format)
+
+### Why This Matters
+
+**DL currently behind ML on audio-dependent targets**:
+- Energy: DL 0.75 vs ML 0.81 (-6.9% gap)
+- Danceability: DL 0.50 vs ML 0.55 (-9.5% gap)
+
+**Audio embeddings will help**:
+- MERT embeddings capture musical patterns (rhythm, timbre, energy)
+- Better than Spotify's hand-crafted features (tempo, loudness, etc.)
+- Expected to close gap on Energy and Danceability
+
+### Pipeline Architecture
+
+**Producer-Consumer Pattern** (6.4x faster):
+1. **Search phase** (8 workers): Query YouTube, get metadata, validate
+2. **Download phase** (4 workers): Download validated matches
+3. **Checkpoint** (every 50 songs): Resume capability
+4. **Validation** (confidence scoring): Ensure correct song matches
+
+**Confidence Algorithm**:
+- Title similarity: 40 points
+- Duration match: 30 points (±5s tolerance)
+- Artist verification: 30 points
+- Threshold: ≥60 to download
+
+### Files Being Created
+
+```
+data/audio/pilot/*.webm          # 693 audio files so far
+data/logs/download_log_pilot.csv # Validation + results for each song
+data/logs/checkpoint_pilot.json  # Resume state (last row: 849)
+```
+
+### Decision Point Coming
+
+After 15K pilot completes:
+1. Analyze success rate (target: ≥80%)
+2. Verify timing projections (target: ≤30s avg)
+3. Spot-check validation accuracy (50 random samples)
+4. **Decide**: PROCEED to 550K / MODIFY approach / ABORT and skip audio
 
 ---
 
