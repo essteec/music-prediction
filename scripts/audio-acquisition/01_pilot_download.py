@@ -487,6 +487,7 @@ def main():
     parser.add_argument('--start-row', type=int, default=None, help='Starting row index (overrides checkpoint if set)')
     parser.add_argument('--limit', type=int, default=DEFAULT_LIMIT, help='Number of songs to process')
     parser.add_argument('--no-resume', action='store_true', help='Ignore checkpoint and start fresh')
+    parser.add_argument('--retry-file', type=str, default=None, help='Path to file with row indices to retry')
     parser.add_argument('--workers', type=int, default=SEARCH_WORKERS, help='Search workers (default: 8)')
     parser.add_argument('--dl-workers', type=int, default=DOWNLOAD_WORKERS, help='Download workers (default: 4)')
     args = parser.parse_args()
@@ -498,8 +499,26 @@ def main():
     ensure_directories()
     init_log_file()
     
+    # Load retry rows if requested
+    retry_rows = set()
+    if args.retry_file:
+        retry_path = Path(args.retry_file)
+        if retry_path.exists():
+            with open(retry_path, 'r') as f:
+                retry_rows = {int(line.strip()) for line in f if line.strip().isdigit()}
+            print(f"Retry mode: Loaded {len(retry_rows)} rows from {args.retry_file}")
+        else:
+            print(f"ERROR: Retry file not found: {args.retry_file}")
+            sys.exit(1)
+    
+    is_retry_mode = len(retry_rows) > 0
+    
     # Determine starting row
-    if args.no_resume:
+    if is_retry_mode:
+        # Retry mode: checkpoint and start-row are ignored for collection, but stats are shown
+        start_row = 0
+        checkpoint = load_checkpoint()
+    elif args.no_resume:
         # Explicit --no-resume: start from 0 or user's --start-row
         start_row = args.start_row if args.start_row is not None else 0
         checkpoint = {'last_row': -1, 'completed': 0, 'successful': 0, 'failed': 0}
@@ -512,8 +531,13 @@ def main():
         checkpoint = load_checkpoint()
         start_row = checkpoint['last_row'] + 1
     
-    print(f"Audio Download Pilot (Optimized) - Starting from row {start_row}")
-    print(f"Target: {args.limit} songs")
+    if is_retry_mode:
+        print(f"Audio Download Pilot (Optimized) - RETRY MODE")
+        print(f"Retrying {len(retry_rows)} specific songs from {args.retry_file}")
+    else:
+        print(f"Audio Download Pilot (Optimized) - Starting from row {start_row}")
+        print(f"Target: {args.limit} songs")
+        
     print(f"Concurrency: {search_workers} search workers, {download_workers} download workers")
     print(f"Output: {AUDIO_DIR}")
     print(f"Log: {LOG_FILE}")
@@ -522,9 +546,9 @@ def main():
     
     # Statistics
     stats = {
-        'completed': checkpoint.get('completed', 0),
-        'successful': checkpoint.get('successful', 0),
-        'failed': checkpoint.get('failed', 0),
+        'completed': checkpoint.get('completed', 0) if not is_retry_mode else 0,
+        'successful': checkpoint.get('successful', 0) if not is_retry_mode else 0,
+        'failed': checkpoint.get('failed', 0) if not is_retry_mode else 0,
         'high_conf': 0,
         'medium_conf': 0,
         'low_conf': 0,
@@ -539,19 +563,28 @@ def main():
         with open(SONGS_CSV, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             
-            # Skip to start row
-            for _ in range(start_row):
-                next(reader, None)
-            
             # Collect rows for batch processing
-            end_row = start_row + args.limit
             all_rows = []
-            for row_idx in range(start_row, end_row):
-                try:
-                    csv_row = next(reader)
-                    all_rows.append((row_idx, csv_row))
-                except StopIteration:
-                    break
+            
+            if is_retry_mode:
+                max_retry = max(retry_rows)
+                for row_idx, csv_row in enumerate(reader):
+                    if row_idx in retry_rows:
+                        all_rows.append((row_idx, csv_row))
+                    if row_idx >= max_retry:
+                        break
+            else:
+                # Skip to start row
+                for _ in range(start_row):
+                    next(reader, None)
+                
+                end_row = start_row + args.limit
+                for row_idx in range(start_row, end_row):
+                    try:
+                        csv_row = next(reader)
+                        all_rows.append((row_idx, csv_row))
+                    except StopIteration:
+                        break
             
             if not all_rows:
                 print("No rows to process")
@@ -565,9 +598,9 @@ def main():
                     
                     last_processed_row = process_batch(batch, stats, pbar, search_workers, download_workers)
                     
-                    # Checkpoint after each batch
-                    save_checkpoint(last_processed_row, stats)
-                    print()
+                    # Checkpoint after each batch (SKIP in retry mode to avoid rewinding progress)
+                    if not is_retry_mode:
+                        save_checkpoint(last_processed_row, stats)
                     
                     # Small delay between batches to avoid rate limiting
                     if batch_start + BATCH_SIZE < total_songs:
@@ -585,7 +618,8 @@ def main():
         sys.exit(1)
     
     # Final checkpoint
-    save_checkpoint(last_processed_row, stats)
+    if not is_retry_mode:
+        save_checkpoint(last_processed_row, stats)
     
     # Print summary
     elapsed = time.time() - pipeline_start

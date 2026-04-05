@@ -50,7 +50,8 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
     error_categories = Counter()
     confidence_distribution = defaultdict(int)
     confidence_vs_success = defaultdict(lambda: {'total': 0, 'success': 0})
-    failed_rows = []  # For retry list
+    failed_rows = []  # For all failures
+    retryable_rows = []  # For failures worth retrying
     
     print(f"Analyzing log file: {LOG_FILE}")
     print(f"Row range: {start_row} to {end_row if end_row else 'end'}")
@@ -97,11 +98,14 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                 stats['failed'] += 1
                 failed_rows.append(row_idx)
                 
+                is_retryable = True
+                
                 # Categorize error
                 if error_msg:
                     if "Low confidence" in error_msg:
                         stats['skipped_low_confidence'] += 1
                         error_categories['Low confidence (skipped)'] += 1
+                        is_retryable = False
                     elif "age" in error_msg.lower() or "restricted" in error_msg.lower():
                         error_categories['Age restricted'] += 1
                         stats['download_failed'] += 1
@@ -110,14 +114,17 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                         error_categories['Video unavailable/removed'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
+                        is_retryable = False
                     elif "private" in error_msg.lower():
                         error_categories['Private video'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
+                        is_retryable = False
                     elif "copyright" in error_msg.lower() or "blocked" in error_msg.lower():
                         error_categories['Copyright/blocked'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
+                        is_retryable = False
                     elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
                         error_categories['Timeout'] += 1
                         stats['download_failed'] += 1
@@ -139,9 +146,13 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                     if confidence_score < 60:
                         stats['skipped_low_confidence'] += 1
                         error_categories['Low confidence (skipped)'] += 1
+                        is_retryable = False
                     else:
                         error_categories['Unknown failure'] += 1
                         stats['download_failed'] += 1
+                
+                if is_retryable:
+                    retryable_rows.append(row_idx)
     
     # Calculate percentages
     if stats['total'] > 0:
@@ -156,7 +167,8 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
         'error_categories': error_categories,
         'confidence_distribution': confidence_distribution,
         'confidence_vs_success': confidence_vs_success,
-        'failed_rows': failed_rows
+        'failed_rows': failed_rows,
+        'retryable_rows': retryable_rows
     }
 
 
@@ -168,6 +180,7 @@ def print_report(results: Dict):
     confidence_distribution = results['confidence_distribution']
     confidence_vs_success = results['confidence_vs_success']
     failed_rows = results['failed_rows']
+    retryable_rows = results['retryable_rows']
     
     # Overall Statistics
     print("\n📊 OVERALL STATISTICS")
@@ -208,15 +221,9 @@ def print_report(results: Dict):
     print("\n🔄 RETRY CANDIDATES")
     print("=" * 80)
     
-    # Count retryable errors (exclude low confidence)
-    retryable = 0
-    for error_type, count in error_categories.items():
-        if error_type != 'Low confidence (skipped)':
-            retryable += count
-    
     print(f"Total failed rows:        {len(failed_rows):,}")
     print(f"Low confidence (skip):    {error_categories.get('Low confidence (skipped)', 0):,}")
-    print(f"Retryable failures:       {retryable:,}")
+    print(f"Retryable failures:       {len(retryable_rows):,}")
     
     # Key insights for retry strategy
     print("\n💡 KEY INSIGHTS FOR RETRY")
@@ -244,13 +251,19 @@ def print_report(results: Dict):
         print(f"   → Consider lowering confidence threshold to 50-55")
     
     # Export failed rows for retry
-    retry_file = PROJECT_ROOT / "data" / "logs" / "failed_rows.txt"
-    with open(retry_file, 'w') as f:
+    failed_file = PROJECT_ROOT / "data" / "logs" / "failed_rows.txt"
+    with open(failed_file, 'w') as f:
         for row_idx in failed_rows:
             f.write(f"{row_idx}\n")
+            
+    retry_file = PROJECT_ROOT / "data" / "logs" / "retryable_rows.txt"
+    with open(retry_file, 'w') as f:
+        for row_idx in retryable_rows:
+            f.write(f"{row_idx}\n")
     
-    print(f"\n✅ Failed row indices saved to: {retry_file}")
-    print(f"   Total: {len(failed_rows):,} rows")
+    print(f"\n✅ All failed row indices saved to: {failed_file}")
+    print(f"✅ Retryable row indices saved to: {retry_file}")
+    print(f"   Total retryable: {len(retryable_rows):,} rows")
 
 
 def main():
