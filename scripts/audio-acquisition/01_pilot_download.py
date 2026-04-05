@@ -63,12 +63,11 @@ LOG_FILE = LOG_DIR / "download_log_pilot.csv"
 CHECKPOINT_FILE = LOG_DIR / "checkpoint_pilot.json"
 
 # Download settings
-DEFAULT_LIMIT = 15000
-MAX_DURATION_SECONDS = 8 * 60  # 8 minutes - filter out long mixes/podcasts
+DEFAULT_LIMIT = 55000
 CONFIDENCE_THRESHOLD = 60  # Minimum score for auto-download
 
 # Concurrency settings (tuned from benchmarks)
-SEARCH_WORKERS = 8   # Search is CPU/network light, can parallelize more
+SEARCH_WORKERS = 4   # Search is CPU/network light, can parallelize more
 DOWNLOAD_WORKERS = 4 # Download is bandwidth limited
 BATCH_SIZE = 50      # Process in batches for checkpoint stability
 BATCH_DELAY = 0.5    # Small delay between batches to avoid rate limiting
@@ -173,8 +172,11 @@ def search_youtube(query: str, max_results: int = 3) -> List[Dict[str, Any]]:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'extract_flat': False,  # Get full metadata
+            'extract_flat': 'in_playlist',  # Fast search, avoid JS challenge errors
+            'ignoreerrors': True,           # Skip failing videos instead of aborting
             'skip_download': True,
+            'cookiesfrombrowser': ('firefox',),  # Use Firefox cookies to bypass bot detection
+            'remote_components': ['ejs:github'], # Download EJS component for JS challenges
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -218,6 +220,8 @@ def download_audio(video_id: str, output_path: Path) -> Dict[str, Any]:
             'no_warnings': True,
             'format': '251/bestaudio',  # Opus/WebM ~3-4MB per song
             'outtmpl': str(output_path),
+            'cookiesfrombrowser': ('firefox',),  # Use Firefox cookies to bypass bot detection
+            'remote_components': ['ejs:github'], # Download EJS component for JS challenges
         }
         
         url = f'https://www.youtube.com/watch?v={video_id}'
@@ -252,6 +256,18 @@ def process_song_search(row_idx: int, csv_row: Dict) -> Dict[str, Any]:
     
     start_time = time.time()
     
+    # Check if already downloaded FIRST - skip entire search
+    output_filename = f"{row_idx:06d}_opus.webm"
+    output_path = AUDIO_DIR / output_filename
+    
+    if output_path.exists():
+        file_size_mb = output_path.stat().st_size / (1024 * 1024)
+        result['download_success'] = True
+        result['ready_for_download'] = False  # Don't need to download
+        result['file_size_mb'] = round(file_size_mb, 2)
+        result['time_taken'] = round(time.time() - start_time, 2)
+        return result
+    
     try:
         # Parse CSV data
         song_id = csv_row.get('id', '')
@@ -273,14 +289,14 @@ def process_song_search(row_idx: int, csv_row: Dict) -> Dict[str, Any]:
         result['query'] = query
         
         # Search YouTube
-        search_results = search_youtube(query, max_results=3)
+        search_results = search_youtube(query, max_results=5)
         if not search_results:
             result['error_msg'] = 'No YouTube results found'
             return result
         
         # Validate and select best match
         best_match = None
-        best_score = 0
+        best_score = -1
         best_validation = None
         
         csv_data = {
@@ -291,9 +307,6 @@ def process_song_search(row_idx: int, csv_row: Dict) -> Dict[str, Any]:
         
         for video in search_results:
             if video.get('duration') is None or not isinstance(video['duration'], (int, float)):
-                continue
-            
-            if video['duration'] > MAX_DURATION_SECONDS:
                 continue
             
             validation = calculate_confidence_score(csv_data, video)
@@ -350,9 +363,16 @@ def process_song_download(search_result: Dict[str, Any]) -> Dict[str, Any]:
         row_idx = search_result['row_idx']
         video_id = search_result['youtube_id']
         
-        # Download audio
+        # Check if already downloaded (skip if exists)
         output_filename = f"{row_idx:06d}_opus.webm"
         output_path = AUDIO_DIR / output_filename
+        
+        if output_path.exists():
+            file_size_mb = output_path.stat().st_size / (1024 * 1024)
+            search_result['download_success'] = True
+            search_result['file_size_mb'] = round(file_size_mb, 2)
+            search_result['time_taken'] = round(time.time() - start_time, 2)
+            return search_result
         
         download_result = download_audio(video_id, output_path)
         
@@ -395,12 +415,19 @@ def process_batch(batch: List[tuple], stats: Dict, pbar: tqdm,
             result = future.result()
             search_results.append(result)
     
-    # Separate into downloadable and non-downloadable
+    # Separate into: downloadable, already exists, and failed
     to_download = [r for r in search_results if r.get('ready_for_download')]
-    skipped = [r for r in search_results if not r.get('ready_for_download')]
+    already_exists = [r for r in search_results if not r.get('ready_for_download') and r.get('download_success')]
+    failed = [r for r in search_results if not r.get('ready_for_download') and not r.get('download_success')]
     
-    # Log skipped immediately
-    for result in skipped:
+    # Count already exists as success (no YouTube search needed, do not log again)
+    for result in already_exists:
+        stats['completed'] += 1
+        stats['successful'] += 1
+        pbar.update(1)
+    
+    # Log failed searches
+    for result in failed:
         log_result(result['row_idx'], result['csv_row'], result)
         stats['completed'] += 1
         stats['failed'] += 1
@@ -457,7 +484,7 @@ def process_batch(batch: List[tuple], stats: Dict, pbar: tqdm,
 
 def main():
     parser = argparse.ArgumentParser(description='Download pilot: concurrent YouTube download pipeline')
-    parser.add_argument('--start-row', type=int, default=0, help='Starting row index (for resume)')
+    parser.add_argument('--start-row', type=int, default=None, help='Starting row index (overrides checkpoint if set)')
     parser.add_argument('--limit', type=int, default=DEFAULT_LIMIT, help='Number of songs to process')
     parser.add_argument('--no-resume', action='store_true', help='Ignore checkpoint and start fresh')
     parser.add_argument('--workers', type=int, default=SEARCH_WORKERS, help='Search workers (default: 8)')
@@ -471,9 +498,19 @@ def main():
     ensure_directories()
     init_log_file()
     
-    # Load checkpoint unless --no-resume
-    checkpoint = {'last_row': -1} if args.no_resume else load_checkpoint()
-    start_row = max(args.start_row, checkpoint['last_row'] + 1)
+    # Determine starting row
+    if args.no_resume:
+        # Explicit --no-resume: start from 0 or user's --start-row
+        start_row = args.start_row if args.start_row is not None else 0
+        checkpoint = {'last_row': -1, 'completed': 0, 'successful': 0, 'failed': 0}
+    elif args.start_row is not None:
+        # User explicitly set --start-row: use it (ignore checkpoint)
+        start_row = args.start_row
+        checkpoint = load_checkpoint()  # Load for stats display
+    else:
+        # Default behavior: resume from checkpoint
+        checkpoint = load_checkpoint()
+        start_row = checkpoint['last_row'] + 1
     
     print(f"Audio Download Pilot (Optimized) - Starting from row {start_row}")
     print(f"Target: {args.limit} songs")
@@ -530,6 +567,7 @@ def main():
                     
                     # Checkpoint after each batch
                     save_checkpoint(last_processed_row, stats)
+                    print()
                     
                     # Small delay between batches to avoid rate limiting
                     if batch_start + BATCH_SIZE < total_songs:

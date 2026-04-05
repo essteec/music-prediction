@@ -37,7 +37,7 @@ def safe_eval_artists(artists_str: str) -> List[str]:
         return []
 
 
-def format_query(track_name: str, artists: List[str], max_artists: int = 3) -> str:
+def format_query(track_name: str, artists: List[str], max_artists: int = 3, limit: int = 75) -> str:
     """
     Format YouTube search query from track and artist names.
     
@@ -45,25 +45,37 @@ def format_query(track_name: str, artists: List[str], max_artists: int = 3) -> s
         track_name: Song title
         artists: List of artist names
         max_artists: Maximum number of artists to include in query
+        limit: Maximum length of the query
         
     Returns:
         Formatted query string optimized for YouTube search
         
     Example:
         >>> format_query("Bohemian Rhapsody", ["Queen"], 3)
-        'Bohemian Rhapsody Queen official audio'
+        "Bohemian Rhapsody 'Queen' official audio"
+        >>> format_query("Under Pressure", ["Queen", "David Bowie"], 3)
+        'Under Pressure Queen David Bowie official audio'
     """
-    # Take first N artists
-    artist_part = " ".join(artists[:max_artists])
+    # Remove all quotes (single and double) from track name
+    clean_track = re.sub(r'[\'"]', '', track_name)
+    
+    # Take first N artists and remove quotes
+    selected_artists = [re.sub(r'[\'"]', '', a) for a in artists[:max_artists]]
+    
+    # If single artist, wrap in single quotes for exact match
+    if len(selected_artists) == 1:
+        artist_part = f"'{selected_artists[0]}'"
+    else:
+        artist_part = " ".join(selected_artists)
     
     # Combine with track name and add search hints
-    query = f"{track_name} {artist_part} official audio"
+    query = f"{clean_track} {artist_part} official audio"
     
-    # Clean up: remove multiple spaces, special chars that break search
+    # Clean up: remove multiple spaces
     query = re.sub(r'\s+', ' ', query).strip()
-    query = re.sub(r'[^\w\s\-\']', '', query)  # Keep only alphanumeric, space, dash, apostrophe
     
-    return query
+    # Apply character limit
+    return query[:limit]
 
 
 def sanitize_filename(text: str, max_length: int = 100) -> str:

@@ -62,7 +62,8 @@ def duration_check(csv_duration_ms: int, youtube_duration_sec: float, tolerance_
         tolerance_sec: Allowed difference in seconds (default: 5)
         
     Returns:
-        Dict with 'match' (bool), 'diff_seconds' (float), 'points' (int 0-30)
+        Dict with 'match' (bool), 'diff_seconds' (float), 'points' (int 0-30 or -1 for rejection)
+        Returns -1 points for extreme mismatches to force rejection.
         
     Example:
         >>> duration_check(245000, 245.5, tolerance_sec=5)
@@ -70,6 +71,15 @@ def duration_check(csv_duration_ms: int, youtube_duration_sec: float, tolerance_
     """
     csv_duration_sec = csv_duration_ms / 1000.0
     diff = abs(csv_duration_sec - youtube_duration_sec)
+    
+    # Hard reject if difference > 60 seconds AND > 30% of expected duration
+    max_allowed_diff = max(60, csv_duration_sec * 0.30)
+    if diff > max_allowed_diff:
+        return {
+            'match': False,
+            'diff_seconds': round(diff, 2),
+            'points': -1  # Indicates rejection
+        }
     
     # Score based on difference
     if diff <= tolerance_sec:
@@ -168,16 +178,61 @@ def calculate_confidence_score(
         >>> result['total_score']
         95
     """
+    # Null checks to prevent NoneType errors
+    csv_name = csv_row.get('name', '')
+    yt_title = youtube_result.get('title', '')
+    
+    if not csv_name or not isinstance(csv_name, str):
+        return {
+            'total_score': 0.0,
+            'confidence': 'low',
+            'title_similarity': 0,
+            'duration_match': False,
+            'duration_diff': 0,
+            'artist_matches': 0,
+            'title_points': 0,
+            'duration_points': 0,
+            'artist_points': 0
+        }
+    
+    if not yt_title or not isinstance(yt_title, str):
+        return {
+            'total_score': 0.0,
+            'confidence': 'low',
+            'title_similarity': 0,
+            'duration_match': False,
+            'duration_diff': 0,
+            'artist_matches': 0,
+            'title_points': 0,
+            'duration_points': 0,
+            'artist_points': 0
+        }
+    
     # 1. Title similarity (0-40 points)
-    title_similarity = fuzzy_title_match(csv_row['name'], youtube_result['title'])
+    title_similarity = fuzzy_title_match(csv_name, yt_title)
     title_points = (title_similarity / 100.0) * 40
     
-    # 2. Duration check (0-30 points)
+    # 2. Duration check (0-30 points, or -1 for rejection)
     duration_result = duration_check(
         csv_row['duration_ms'],
         youtube_result['duration']
     )
     duration_points = duration_result['points']
+    
+    # Hard rejection if duration is way off (-1 means reject)
+    if duration_points == -1:
+        return {
+            'total_score': 0.0,
+            'confidence': 'low',
+            'title_similarity': title_similarity,
+            'duration_match': False,
+            'duration_diff': duration_result['diff_seconds'],
+            'artist_matches': 0,
+            'title_points': title_points,
+            'duration_points': 0,
+            'artist_points': 0,
+            'rejected': 'duration_mismatch'
+        }
     
     # 3. Artist verification (0-30 points)
     artist_result = artist_verification(
