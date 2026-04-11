@@ -2,11 +2,72 @@
 
 ## 📅 Current Status
 
-**Phase**: Phase 2 - Audio Data Acquisition (IN PROGRESS)
-**Status**: Optimized concurrent download pipeline running pilot (850/15,000 songs)
-**Next**: Complete 15K pilot → analyze results → decide on full 550K run
-**Speed**: 1.8s per song (6.4x faster than baseline) - 11.5 days projected for 550K
-**Decision Context**: Skipped Architecture (Phase 2 DL) in favor of data acquisition for Phase 3 (Audio Embeddings)
+**Phase**: Phase 3 - Audio Embedding Extraction (IN PROGRESS)
+**Status**: Extraction pipeline built, all 4 extractors tested and working
+**Next**: Run full extraction on 45,314 songs (~6 days total)
+**Audio Files**: 45,314 downloaded songs (163GB in `data/audio/pilot/`)
+
+---
+
+## 🎵 Audio Embedding Extraction Pipeline (NEW - April 6, 2026)
+
+### Extractors Built and Tested ✅
+
+| Model | Output | Est. Time | Status |
+|-------|--------|-----------|--------|
+| **VGGish** | 128-d | ~12h | ✅ Tested (1.93s/song) |
+| **Mel Stats** | 512-d | ~8h | ✅ Tested (1.78s/song) |
+| **MERT-95M** | 768-d | ~90h | ✅ Tested (1.26s/song) |
+| **PANNs** | 2048-d | ~35h | ✅ Tested (0.88s/song) |
+| **TOTAL** | **3,456-d** | **~6 days** | Ready to run |
+
+### Files Created
+
+```
+scripts/audio-embedding-extraction/
+├── utils.py              # Shared utilities (audio loading, checkpoints, validation)
+├── extract_vggish.py     # TensorFlow Hub VGGish (128-d)
+├── extract_mel_stats.py  # Librosa mel spectrogram statistics (512-d)
+├── extract_mert.py       # HuggingFace MERT-v1-95M (768-d)
+├── extract_panns.py      # PANNs Cnn14 AudioSet model (2048-d)
+└── run_all_extractors.py # Orchestrator script
+
+data/embeddings/audio/    # Output directory (test files created)
+├── vggish_embeddings_128d.npy
+├── mel_stats_512d.npy
+├── mert_embeddings_768d.npy
+└── panns_embeddings_2048d.npy
+```
+
+### Run Commands
+
+```bash
+# Run specific model
+python scripts/audio-embedding-extraction/extract_vggish.py --resume
+
+# Run all models
+python scripts/audio-embedding-extraction/run_all_extractors.py
+
+# Test mode (10 songs)
+python scripts/audio-embedding-extraction/extract_mert.py --test 10
+```
+
+### Key Features
+
+- **Checkpoint every 500-1000 songs**: Resume capability for multi-day runs
+- **FP32 mode for MERT**: FP16 caused NaN values, using full precision
+- **Full song processing**: Mean pooling over temporal dimension
+- **NPY output format**: Matches existing pipeline convention
+
+---
+
+## ✅ Audio Download Complete (First 50K Batch)
+
+- **Downloaded**: 45,314 songs successfully
+- **Storage**: 163GB in `data/audio/pilot/`
+- **Format**: WebM/Opus
+- **Log**: `data/logs/download_log_pilot.csv` (50,005 rows)
+- **Success Rate**: 90.6%
 
 ---
 

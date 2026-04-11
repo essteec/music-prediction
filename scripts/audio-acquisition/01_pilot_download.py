@@ -70,7 +70,7 @@ CONFIDENCE_THRESHOLD = 60  # Minimum score for auto-download
 SEARCH_WORKERS = 4   # Search is CPU/network light, can parallelize more
 DOWNLOAD_WORKERS = 4 # Download is bandwidth limited
 BATCH_SIZE = 50      # Process in batches for checkpoint stability
-BATCH_DELAY = 0.5    # Small delay between batches to avoid rate limiting
+BATCH_DELAY = 0.8    # Small delay between batches to avoid rate limiting
 
 # Thread-safe logging
 log_lock = threading.Lock()
@@ -172,6 +172,7 @@ def search_youtube(query: str, max_results: int = 3) -> List[Dict[str, Any]]:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'noprogress': True,
             'extract_flat': 'in_playlist',  # Fast search, avoid JS challenge errors
             'ignoreerrors': True,           # Skip failing videos instead of aborting
             'skip_download': True,
@@ -218,6 +219,7 @@ def download_audio(video_id: str, output_path: Path) -> Dict[str, Any]:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'noprogress': True,
             'format': '251/bestaudio',  # Opus/WebM ~3-4MB per song
             'outtmpl': str(output_path),
             'cookiesfrombrowser': ('firefox',),  # Use Firefox cookies to bypass bot detection
