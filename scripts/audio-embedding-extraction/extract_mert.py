@@ -159,25 +159,33 @@ def run_extraction(
     embeddings_dict: Dict[str, np.ndarray] = {}
     processed_ids: set = set()
     error_log = []
-    start_idx = 0
+    
+    # Get current IDs as a set for fast lookup
+    current_ids = {d[0] for d in downloads}
+    all_target_ids = utils.get_all_successful_ids()
     
     # Resume from checkpoint if requested
     if resume:
         checkpoint = utils.load_checkpoint(MODEL_NAME)
         if checkpoint:
-            print(f"[INFO] Resuming from checkpoint: {checkpoint['processed_count']} songs already done")
+            # Load EVERYTHING from checkpoint (cumulative)
             embeddings_dict = checkpoint.get('embeddings', {})
             processed_ids = set(checkpoint.get('processed_ids', []))
-            start_idx = checkpoint['last_processed_idx'] + 1
             error_log = checkpoint.get('errors', [])
             
-            # Check if already finished
-            if len(processed_ids) + len(error_log) >= len(downloads):
-                print(f"[INFO] All {len(downloads)} songs already processed according to checkpoint.")
+            # Count how many of the CURRENT batch are already done
+            done_current = sum(1 for sid in current_ids if sid in processed_ids)
+            if done_current > 0:
+                print(f"[INFO] Resuming: {done_current} of {len(downloads)} current songs already done")
+            
+            # ROBUST EARLY EXIT: Only exit if all CURRENT IDs are accounted for
+            error_ids = {e['spotify_id'] for e in error_log}
+            if current_ids.issubset(processed_ids.union(error_ids)):
+                print(f"[INFO] All {len(downloads)} current songs already processed according to checkpoint.")
                 # Still save embeddings to be safe if file doesn't exist
                 output_path = utils.EMBEDDINGS_DIR / f"{MODEL_NAME}_embeddings_{EMBEDDING_DIM}d.npy"
                 if not output_path.exists():
-                    utils.save_embeddings_npy(embeddings_dict, output_path)
+                    utils.save_embeddings_npy(embeddings_dict, output_path, all_target_ids)
                 return embeddings_dict
 
     # Load model
@@ -186,21 +194,23 @@ def run_extraction(
     # Track progress
     successful = len(embeddings_dict)
     failed = len(error_log)
+    error_ids = {e['spotify_id'] for e in error_log} # For fast lookup
     start_time = time.time()
     
-    print(f"[INFO] Starting extraction from index {start_idx}")
+    print(f"[INFO] Starting extraction...")
+    print(f"[INFO] Total embeddings currently in memory: {len(embeddings_dict):,}")
     print(f"[INFO] Max audio length: {MAX_AUDIO_LENGTH/SAMPLE_RATE:.0f} seconds")
     print(f"[INFO] Checkpoint every {checkpoint_interval} songs")
     print("-"*60)
     
     # Process songs
     for idx, (spotify_id, filepath, row_idx) in enumerate(downloads):
-        # Skip already processed
+        # Skip already processed (from ANY batch)
         if spotify_id in processed_ids:
             continue
         
         # Skip if already in error log too
-        if any(e['spotify_id'] == spotify_id for e in error_log):
+        if spotify_id in error_ids:
             continue
 
         song_start = time.time()
@@ -236,9 +246,9 @@ def run_extraction(
             # Progress update every 50 songs (MERT is slow)
             if successful % 50 == 0:
                 elapsed = time.time() - start_time
-                avg_time = elapsed / successful
+                avg_time = (time.time() - start_time) / (idx + 1)
                 remaining = (len(downloads) - idx) * avg_time
-                print(f"[{successful:,}/{len(downloads):,}] {spotify_id} - "
+                print(f"[{idx+1:,}/{len(downloads):,}] {spotify_id} - "
                       f"{time_taken:.2f}s/song, ETA: {remaining/3600:.1f}h")
                 
                 # Clear GPU cache periodically
@@ -251,6 +261,7 @@ def run_extraction(
                 'row_idx': row_idx,
                 'error': error_msg
             })
+            error_ids.add(spotify_id) # Update lookup set
             failed += 1
             
             utils.log_extraction_progress(
@@ -265,7 +276,7 @@ def run_extraction(
             utils.clear_gpu_memory()
         
         # Checkpoint
-        if (successful + failed) % checkpoint_interval == 0:
+        if (idx + 1) % checkpoint_interval == 0:
             utils.create_checkpoint(
                 MODEL_NAME,
                 idx,
@@ -273,7 +284,7 @@ def run_extraction(
                 embeddings_dict,
                 error_log
             )
-            print(f"[CHECKPOINT] Saved at {successful + failed} songs")
+            print(f"[CHECKPOINT] Saved at index {idx+1}")
             utils.clear_gpu_memory()
     
     # Final checkpoint after loop finishes
@@ -284,14 +295,14 @@ def run_extraction(
         embeddings_dict,
         error_log
     )
-    print(f"[CHECKPOINT] Final checkpoint saved at {successful + failed} songs")
+    print(f"[CHECKPOINT] Final checkpoint saved at {len(processed_ids)} total embeddings")
 
     # Final save
     total_time = time.time() - start_time
     
-    # Save embeddings
+    # Save embeddings using the FULL ID list to preserve order
     output_path = utils.EMBEDDINGS_DIR / f"{MODEL_NAME}_embeddings_{EMBEDDING_DIM}d.npy"
-    utils.save_embeddings_npy(embeddings_dict, output_path)
+    utils.save_embeddings_npy(embeddings_dict, output_path, all_target_ids)
     
     # Print summary
     utils.print_extraction_summary(

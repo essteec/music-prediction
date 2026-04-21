@@ -81,6 +81,18 @@ def get_successful_downloads() -> List[Tuple[str, Path, int]]:
     return results
 
 
+def get_all_successful_ids() -> List[str]:
+    """
+    Get all spotify_ids marked as successful in the download log, 
+    even if the audio file is not currently on disk.
+    Used for maintaining the full dataset order.
+    """
+    if not DOWNLOAD_LOG.exists():
+        return []
+    df = pd.read_csv(DOWNLOAD_LOG)
+    return df[df['download_success'] == True]['song_id'].tolist()
+
+
 def load_audio_file(
     filepath: Union[str, Path], 
     target_sr: int = 16000,

@@ -114,17 +114,14 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                         error_categories['Video unavailable/removed'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
-                        is_retryable = False
                     elif "private" in error_msg.lower():
                         error_categories['Private video'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
-                        is_retryable = False
                     elif "copyright" in error_msg.lower() or "blocked" in error_msg.lower():
                         error_categories['Copyright/blocked'] += 1
                         stats['download_failed'] += 1
                         stats['attempted'] += 1
-                        is_retryable = False
                     elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
                         error_categories['Timeout'] += 1
                         stats['download_failed'] += 1
