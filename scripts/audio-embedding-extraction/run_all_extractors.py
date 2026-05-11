@@ -3,9 +3,9 @@ Audio Embedding Extraction Orchestrator
 
 Runs all embedding extractors in optimal order:
 1. VGGish (fastest, ~12 hours for 45K songs)
-2. Mel Stats (CPU-based, ~8 hours for 45K songs)
-3. MERT (SOTA music embeddings, ~90 hours for 45K songs)
-4. PANNs (AudioSet features, ~35 hours for 45K songs)
+2. Mel Stats (CPU-based, ~14 hours for 45K songs)
+3. MERT (SOTA music embeddings, ~6 hours for 45K songs)
+4. PANNs (AudioSet features, ~14 hours for 45K songs)
 
 Total: ~145 hours (~6 days) for all 4 extractors
 
@@ -27,9 +27,9 @@ from pathlib import Path
 # Extraction order (fastest first for quick validation)
 EXTRACTORS = [
     ('vggish', 'extract_vggish.py', '~12h'),
-    ('mel_stats', 'extract_mel_stats.py', '~8h'),
-    ('mert', 'extract_mert.py', '~90h'),
-    ('panns', 'extract_panns.py', '~35h'),
+    ('mel_stats', 'extract_mel_stats.py', '~14h'),
+    ('mert', 'extract_mert.py', '~6h'),
+    ('panns', 'extract_panns.py', '~14h'),
 ]
 
 

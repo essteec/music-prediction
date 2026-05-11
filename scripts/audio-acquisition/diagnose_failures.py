@@ -15,6 +15,7 @@ Usage:
 """
 import csv
 import sys
+import re
 from pathlib import Path
 from collections import defaultdict, Counter
 from typing import Dict, List, Tuple
@@ -22,11 +23,40 @@ from typing import Dict, List, Tuple
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 LOG_FILE = PROJECT_ROOT / "data" / "logs" / "download_log_pilot.csv"
+AUDIO_DIR = PROJECT_ROOT / "data" / "audio" / "pilot"
 
 
 def parse_bool(value: str) -> bool:
     """Parse boolean string from CSV."""
     return value.strip().lower() == 'true'
+
+
+def get_downloaded_audio_rows() -> Tuple[set, set]:
+    """Return complete and partial audio row IDs from data/audio/pilot."""
+    complete_rows = set()
+    partial_rows = set()
+
+    if not AUDIO_DIR.exists():
+        return complete_rows, partial_rows
+
+    row_id_pattern = re.compile(r'^(\d+)_')
+
+    for file_path in AUDIO_DIR.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = row_id_pattern.match(file_path.name)
+        if not match:
+            continue
+
+        row_idx = int(match.group(1))
+        if file_path.name.endswith('.part'):
+            partial_rows.add(row_idx)
+            continue
+
+        complete_rows.add(row_idx)
+
+    return complete_rows, partial_rows
 
 
 def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
@@ -44,6 +74,10 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
         'skipped_low_confidence': 0,
         'attempted': 0,  # Actually tried to download
         'download_failed': 0,  # Download attempted but failed
+        'missing_on_disk': 0,
+        'not_downloaded_for_some_reason_error': 0,
+        'complete_files_detected': 0,
+        'partial_files_ignored': 0,
     }
     
     # Error categorization
@@ -52,6 +86,8 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
     confidence_vs_success = defaultdict(lambda: {'total': 0, 'success': 0})
     failed_rows = []  # For all failures
     retryable_rows = []  # For failures worth retrying
+    processed_rows = set()
+    low_confidence_rows = set()
     
     print(f"Analyzing log file: {LOG_FILE}")
     print(f"Row range: {start_row} to {end_row if end_row else 'end'}")
@@ -68,6 +104,8 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                 continue
             if end_row and row_idx >= end_row:
                 break
+
+            processed_rows.add(row_idx)
             
             stats['total'] += 1
             
@@ -105,6 +143,7 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                     if "Low confidence" in error_msg:
                         stats['skipped_low_confidence'] += 1
                         error_categories['Low confidence (skipped)'] += 1
+                        low_confidence_rows.add(row_idx)
                         is_retryable = False
                     elif "age" in error_msg.lower() or "restricted" in error_msg.lower():
                         error_categories['Age restricted'] += 1
@@ -143,6 +182,7 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                     if confidence_score < 60:
                         stats['skipped_low_confidence'] += 1
                         error_categories['Low confidence (skipped)'] += 1
+                        low_confidence_rows.add(row_idx)
                         is_retryable = False
                     else:
                         error_categories['Unknown failure'] += 1
@@ -150,6 +190,22 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
                 
                 if is_retryable:
                     retryable_rows.append(row_idx)
+
+    # Validate against actual downloaded files on disk
+    complete_rows, partial_rows = get_downloaded_audio_rows()
+    stats['complete_files_detected'] = len(complete_rows)
+    stats['partial_files_ignored'] = len(partial_rows)
+
+    missing_on_disk_rows = sorted(processed_rows - complete_rows)
+    not_downloaded_error_rows = sorted(
+        row_idx for row_idx in missing_on_disk_rows if row_idx not in low_confidence_rows
+    )
+
+    stats['missing_on_disk'] = len(missing_on_disk_rows)
+    stats['not_downloaded_for_some_reason_error'] = len(not_downloaded_error_rows)
+
+    # Ensure retry candidates include all non-low-confidence rows that are missing on disk.
+    retryable_rows = sorted(set(retryable_rows).union(not_downloaded_error_rows))
     
     # Calculate percentages
     if stats['total'] > 0:
@@ -165,7 +221,9 @@ def analyze_log(start_row: int = 0, end_row: int = None) -> Dict:
         'confidence_distribution': confidence_distribution,
         'confidence_vs_success': confidence_vs_success,
         'failed_rows': failed_rows,
-        'retryable_rows': retryable_rows
+        'retryable_rows': retryable_rows,
+        'missing_on_disk_rows': missing_on_disk_rows,
+        'not_downloaded_error_rows': not_downloaded_error_rows,
     }
 
 
@@ -178,6 +236,8 @@ def print_report(results: Dict):
     confidence_vs_success = results['confidence_vs_success']
     failed_rows = results['failed_rows']
     retryable_rows = results['retryable_rows']
+    missing_on_disk_rows = results['missing_on_disk_rows']
+    not_downloaded_error_rows = results['not_downloaded_error_rows']
     
     # Overall Statistics
     print("\n📊 OVERALL STATISTICS")
@@ -220,7 +280,11 @@ def print_report(results: Dict):
     
     print(f"Total failed rows:        {len(failed_rows):,}")
     print(f"Low confidence (skip):    {error_categories.get('Low confidence (skipped)', 0):,}")
+    print(f"Missing rows on disk:     {len(missing_on_disk_rows):,}")
+    print(f"Not downloaded for some reason error: {len(not_downloaded_error_rows):,}")
     print(f"Retryable failures:       {len(retryable_rows):,}")
+    print(f"Complete files detected:  {stats.get('complete_files_detected', 0):,}")
+    print(f"Partial files ignored:    {stats.get('partial_files_ignored', 0):,}")
     
     # Key insights for retry strategy
     print("\n💡 KEY INSIGHTS FOR RETRY")
@@ -242,6 +306,11 @@ def print_report(results: Dict):
     if unavailable > 0:
         print(f"⚠️  Unavailable: {unavailable:,} songs")
         print(f"   → Retry unlikely to help (videos removed)")
+
+    not_downloaded_error_count = stats.get('not_downloaded_for_some_reason_error', 0)
+    if not_downloaded_error_count > 0:
+        print(f"⚠️  Not downloaded for some reason error: {not_downloaded_error_count:,} songs")
+        print(f"   → Detected by checking missing complete files on disk (excluding low confidence)")
     
     if stats['skipped_low_confidence'] > stats['successful']:
         print(f"⚠️  More songs skipped ({stats['skipped_low_confidence']:,}) than downloaded ({stats['successful']:,})")
@@ -257,9 +326,21 @@ def print_report(results: Dict):
     with open(retry_file, 'w') as f:
         for row_idx in retryable_rows:
             f.write(f"{row_idx}\n")
+
+    missing_file = PROJECT_ROOT / "data" / "logs" / "missing_on_disk_rows.txt"
+    with open(missing_file, 'w') as f:
+        for row_idx in missing_on_disk_rows:
+            f.write(f"{row_idx}\n")
+
+    not_downloaded_error_file = PROJECT_ROOT / "data" / "logs" / "not_downloaded_error_rows.txt"
+    with open(not_downloaded_error_file, 'w') as f:
+        for row_idx in not_downloaded_error_rows:
+            f.write(f"{row_idx}\n")
     
     print(f"\n✅ All failed row indices saved to: {failed_file}")
     print(f"✅ Retryable row indices saved to: {retry_file}")
+    print(f"✅ Missing-on-disk row indices saved to: {missing_file}")
+    print(f"✅ Not-downloaded-error row indices saved to: {not_downloaded_error_file}")
     print(f"   Total retryable: {len(retryable_rows):,} rows")
 
 

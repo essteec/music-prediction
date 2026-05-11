@@ -70,7 +70,7 @@ CONFIDENCE_THRESHOLD = 60  # Minimum score for auto-download
 SEARCH_WORKERS = 4   # Search is CPU/network light, can parallelize more
 DOWNLOAD_WORKERS = 4 # Download is bandwidth limited
 BATCH_SIZE = 50      # Process in batches for checkpoint stability
-BATCH_DELAY = 0.8    # Small delay between batches to avoid rate limiting
+BATCH_DELAY = 30    # Small delay between batches to avoid rate limiting
 
 # Thread-safe logging
 log_lock = threading.Lock()
