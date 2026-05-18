@@ -49,6 +49,7 @@ STEP_FUNCTIONS = {
     "text_stats": process_text_statistics,
     "sentiment": process_sentiment,
     "embeddings": process_embeddings,
+    "mpnet": process_embeddings, # Handled together in process_embeddings.py
     "targets": process_targets,
 }
 
@@ -56,7 +57,8 @@ STEP_DESCRIPTIONS = {
     "audio": "Audio features (power transform skewed, cyclical encoding, scaling, genre one-hot)",
     "text_stats": "Text statistics (word counts, vocabulary metrics, log transform)",
     "sentiment": "Sentiment analysis (TextBlob polarity & subjectivity)",
-    "embeddings": "Lyric embeddings (all-MiniLM-L6-v2, 384-dim semantic vectors)",
+    "embeddings": "Lyric embeddings (all-MiniLM-L6-v2, 384-dim)",
+    "mpnet": "Lyric embeddings (all-mpnet-base-v2, 768-dim)",
     "targets": "Target variables (valence, energy, danceability, log-popularity)",
 }
 

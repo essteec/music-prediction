@@ -1,5 +1,6 @@
 # Script execution order
 
+## Audio acquisition and embeddings extraction
 Use 50k rows if you have ~175GB of free disk space. Adjust it acordingly.
 
 - python scripts/audio-acquisition/01_pilot_download.py --start-row 0 --limit 50000  # increase start-row each cycle

@@ -60,12 +60,12 @@ print(f"✓ Sentiment: train={X_train_sentiment.shape}, val={X_val_sentiment.sha
 
 # Embeddings
 try:
-    X_train_embeddings = np.load(features_dir / 'X_train_embeddings.npy')
-    X_val_embeddings = np.load(features_dir / 'X_val_embeddings.npy')
-    print(f"✓ Embeddings: train={X_train_embeddings.shape}, val={X_val_embeddings.shape}")
+    X_train_embeddings = np.load(features_dir / 'X_train_mpnet.npy')
+    X_val_embeddings = np.load(features_dir / 'X_val_mpnet.npy')
+    print(f"✓ MPNet Embeddings: train={X_train_embeddings.shape}, val={X_val_embeddings.shape}")
 except FileNotFoundError:
-    print("\n❌ ERROR: Embeddings not found!")
-    print("Run preprocessing first: python run_preprocessing.py --steps embeddings")
+    print("\n❌ ERROR: MPNet Embeddings not found!")
+    print("Run preprocessing first: python run_preprocessing.py --steps mpnet")
     exit(1)
 
 # Combine ALL features
@@ -74,7 +74,7 @@ X_train = np.hstack([X_train_audio, X_train_text, X_train_sentiment, X_train_emb
 X_val = np.hstack([X_val_audio, X_val_text, X_val_sentiment, X_val_embeddings])
 
 print(f"\n{'=' * 80}")
-print(f"COMBINED FEATURE MATRIX - EXPERIMENT 2")
+print(f"COMBINED FEATURE MATRIX - MPNET VERSION")
 print(f"{'=' * 80}")
 print(f"Train: {X_train.shape}")
 print(f"Val:   {X_val.shape}")
@@ -82,8 +82,8 @@ print(f"\nFeature breakdown:")
 print(f"  - Audio:      23 features (genre, year, cyclical key, audio, + artist)")
 print(f"  - Text Stats:  5 features (word count, uniqueness, avg length, etc.)")
 print(f"  - Sentiment:   2 features (polarity, subjectivity)")
-print(f"  - Embeddings: 384 features (semantic vectors)")
-print(f"  - TOTAL:      414 features (+2 artist features)")
+print(f"  - Embeddings: 768 features (semantic vectors from MPNet)")
+print(f"  - TOTAL:      798 features")
 print(f"{'=' * 80}")
 
 # Define targets

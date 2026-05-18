@@ -137,6 +137,61 @@ print(f"✅ Train saved to: {train_path}")
 print(f"✅ Val saved to:   {val_path}")
 print(f"✅ Test saved to:  {test_path}")
 
+# --- NEW: SPLIT ALIGNED .NPZ FILES ---
+print("\n" + "-" * 80)
+print("SPLITTING ALIGNED .NPZ FILES")
+print("-" * 80)
+
+audio_models = {
+    'vggish': 'vggish_embeddings',
+    'mel_stats': 'mel_stats_embeddings',
+    'mert': 'mert_embeddings',
+    'panns': 'panns_embeddings'
+}
+
+# The target directory where ML models expect features
+features_dir = REPO_ROOT / 'ml' / 'features'
+features_dir.mkdir(exist_ok=True, parents=True)
+
+import gc
+
+# CRITICAL: val_idx and test_idx are LOCAL indices into df_temp, not into
+# the full songs.csv / features array.  We must convert them to global
+# indices before slicing the NPZ arrays.
+val_idx_global = temp_idx[val_idx]
+test_idx_global = temp_idx[test_idx]
+
+for model_name, prefix in audio_models.items():
+    npz_path = output_dir / f"{prefix}.npz"
+    if not npz_path.exists():
+        print(f"  WARN: {npz_path} not found. Skipping NPZ split for {model_name}.")
+        continue
+        
+    print(f"  Loading {prefix}.npz...")
+    try:
+        with np.load(npz_path) as data:
+            features = data['features']
+            
+            if len(features) != len(df):
+                print(f"  ❌ ERROR: {prefix}.npz has {len(features)} rows, but songs.csv has {len(df)}. Must be 1-to-1!")
+                continue
+                
+            print(f"  Splitting {model_name}...")
+            train_feats = features[train_idx]
+            val_feats = features[val_idx_global]
+            test_feats = features[test_idx_global]
+            
+            np.save(features_dir / f"X_train_{model_name}.npy", train_feats)
+            np.save(features_dir / f"X_val_{model_name}.npy", val_feats)
+            np.save(features_dir / f"X_test_{model_name}.npy", test_feats)
+            
+            print(f"  ✅ Saved {model_name} splits to ml/features/")
+            
+            del features, train_feats, val_feats, test_feats
+            gc.collect()
+    except Exception as e:
+        print(f"  ❌ Failed to split {model_name}: {e}")
+
 # Final summary
 print("\n" + "=" * 80)
 print("SPLIT COMPLETE!")

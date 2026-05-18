@@ -41,6 +41,7 @@ data/audio/
 *.parquet
 # NumPy arrays (features, models)
 *.npy  
+*.npz
 dataset/raw/
 dataset/processed/
 ml/features/*.npy

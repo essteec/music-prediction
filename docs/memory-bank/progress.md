@@ -1,708 +1,143 @@
 # Progress: Music Prediction Project
 
-## 📅 Current Phase
-Phase 2 - Data Acquisition (IN PROGRESS)
+## Current Phase
 
-**Status**: Audio download pipeline optimized and running  
-**Current Focus**: Acquiring audio files via YouTube for MERT/VGGish embeddings (Phase 3 prerequisite)  
-**Last Completed**: Optimized download pipeline - 6.4x speedup (11.57s → 1.8s per song) ✅  
-**Progress**: 850/15,000 pilot songs (5.7%) - estimating ~7.5 hours for full pilot
+Thesis consolidation after Phase 4 deep learning experiments.
+
+**Status**: Dataset alignment and audio-embedding ML baselines are corrected. DL experiments A-H are complete. The project should now stop broad experimentation and move toward clean, thesis-ready comparison tables.
 
 ---
 
-## ✅ Semester 1: ML Baseline (COMPLETE)
+## Completed Work
 
-### Achievements
-- **Dataset**: 550,622 English songs with 414 features
-- **Features**: 23 audio + 5 text stats + 2 sentiment + 384 embeddings (MiniLM)
-- **Preprocessing**: All .npy files at `ml/features/` (941 MB total)
-- **Splits**: Artist-aware train/val/test (zero artist overlap)
-- **Models**: 28+ algorithms tested (CatBoost, XGBoost, LightGBM dominated)
-- **Thesis**: Complete and submitted
-- **Kaggle**: Bronze Medal (48 votes)
+### Semester 1 ML Baseline
 
-### ML Baseline to Beat (Test Set R²)
-| Target | Best Model | R² | Notes |
-|--------|-----------|-----|-------|
-| **Energy** | CatBoost_tuned | **0.81** | Strong baseline - highly predictable |
-| **Danceability** | XGBoost_tuned | **0.55** | Moderate baseline |
-| **Valence** | XGBoost_tuned | **0.45** | Weak - main opportunity for improvement |
-| **Popularity** | CatBoost | **0.13** | Very weak - external factors dominate |
+- Built the original 550K-song thesis pipeline with artist-aware train/val/test splits.
+- Trained broad classical ML baselines with engineered audio, text, sentiment, and MiniLM features.
+- Strongest original models were gradient boosting methods: CatBoost, XGBoost, LightGBM.
+- Published thesis/Kaggle artifacts from the first project stage.
 
-### Available Data (Ready for DL)
-```
-ml/features/
-├── X_train_audio.npy          (374997, 23)
-├── X_train_text_stats.npy     (374997, 5)
-├── X_train_sentiment.npy      (374997, 2)
-├── X_train_embeddings.npy     (374997, 384)
-├── y_train_{target}.npy       (4 targets: valence, energy, danceability, popularity)
-└── Same structure for val and test splits
+### Phase 0: PyTorch MLP Baseline
 
-Total: 414 features ready for training
-```
+- Created deterministic PyTorch training pipeline.
+- Added multi-task regression over Valence, Energy, Danceability, and Popularity.
+- Fixed major DL issues: output activation mismatch, missing seeds, target imbalance, PyTorch checkpoint loading behavior.
+- Established that a simple MLP on tabular features is not enough to beat gradient boosting.
 
----
+### Phase 1: MPNet Text Embeddings
 
-## 🚀 Semester 2: Deep Learning Extension
+- Extracted MPNet lyric embeddings for all splits.
+- Trained MLP with 798 features: metadata + MPNet.
+- Improved over the initial MLP, but text-only improvement was not enough to close the ML gap.
+- Decision: skip costly BERT fine-tuning and focus on audio/multimodal fusion.
 
-**Goal**: Beat ML baseline using Deep Learning neural networks
+### Audio Acquisition And Embedding Pipeline
 
-**Strategy**: Start simple with PyTorch MLP on existing 414 features, then iterate improvements based on semester2-full-plan.md inspiration
+- Built YouTube audio acquisition pipeline.
+- Built/tested VGGish, Mel Stats, MERT, and PANNs embedding extraction.
+- Produced aligned feature arrays in `ml/features/`:
+  - `X_*_vggish.npy`
+  - `X_*_mel_stats.npy`
+  - `X_*_mert.npy`
+  - `X_*_panns.npy`
+  - `X_*_mpnet.npy`
 
----
+### Dataset Alignment And NPZ Bug Fix
 
-## ✅ Phase 0: PyTorch MLP Baseline (COMPLETE)
+- Pruned/cleaned the dataset to aligned rows after successful extractions.
+- Updated splitting so CSV metadata and NPZ-derived features stay synchronized.
+- Fixed the critical NPZ local/global index bug in `data_splitting.py`.
+- Regenerated audio NPY splits after the fix.
 
-### Timeline
-- **Started**: March 30, 2026
-- **Completed**: March 31, 2026
-- **Duration**: 1 day
+### Classical ML On Audio Embeddings
 
-### Final Results - Weighted Loss (Test Set R²)
+Scripts/results:
 
-**Comparison to ML Baseline:**
-| Target | ML R² | DL R² (Unweighted) | DL R² (Weighted) | Improvement | Gap to ML |
-|--------|-------|-------------------|-----------------|-------------|-----------|
-| Valence | 0.45 | 0.27 | **0.35** | +0.08 | -0.10 |
-| Energy | 0.81 | 0.71 | **0.75** | +0.04 | -0.06 |
-| Danceability | 0.55 | 0.37 | **0.47** | +0.10 | -0.08 |
-| Popularity | 0.13 | 0.11 | **0.12** | +0.01 | -0.01 |
-| **Average** | **0.49** | **0.36** | **0.42** | **+0.06** | **-0.07** |
+- `ml/models/vggish_models.py` -> `results/metrics/vggish_test/vggish_results_20260517_114704.csv`
+- `ml/models/mert_models.py` -> `results/metrics/mert_test/mert_results_20260517_114009.csv`
+- `ml/models/mel_stats_models.py` -> `results/metrics/mel_stats_test/mel_stats_results_20260517_115825.csv`
+- `ml/models/panns_models.py` -> `results/metrics/panns_test/panns_results_20260517_125020.csv`
+- `ml/models/ultimate_models.py` -> `results/metrics/ultimate_test/ultimate_results_20260517_144042.csv`
 
-**Key Findings:**
-- ✅ **16.7% improvement** with weighted loss (0.36 → 0.42 avg R²)
-- ✅ DL still ~7 points behind ML (expected for tabular data with engineered features)
-- ✅ Weighted loss balanced learning: Valence & Danceability improved most (+0.08, +0.10)
-- ✅ Multi-task learning works - no target domination issues
-- ✅ Popularity essentially equal to ML (both struggle with external factors)
+Important correction:
 
-### Critical Bugs Discovered & Fixed
+- `ultimate_results_20260516_184227.csv` was the broken run caused by the NPZ split-index bug.
+- `ultimate_results_20260517_144042.csv` is the corrected result and is the valid Ultimate ML baseline.
 
-1. **Sigmoid vs log1p Mismatch (CRITICAL)**
-   - **Problem**: Popularity uses `log1p()` transformation [0-4.6] but model used Sigmoid activation [0-1]
-   - **Impact**: Model physically unable to predict popularity > 1.0
-   - **Fix**: Removed Sigmoid from final layer, use raw regression
-   - **File**: `dl/utils/models.py` line 48-51
+Corrected Ultimate XGBoost baseline:
 
-2. **Reproducibility Issues**
-   - **Problem**: Random initialization caused non-deterministic results
-   - **Impact**: Cannot verify methodology or compare experiments
-   - **Fix**: `set_seed(42)` at start of all scripts, deterministic DataLoader
-   - **Files**: All training scripts + `dl/utils/reproducibility.py`
+| Target | R2 |
+|---|---:|
+| Valence | 0.6728 |
+| Energy | 0.9073 |
+| Danceability | 0.7693 |
+| Popularity | 0.1478 |
+| Average | 0.6243 |
 
-3. **Multi-Task Learning Imbalance**
-   - **Problem**: Popularity's large errors (scale 0-4.6) dominated gradient
-   - **Impact**: Model ignored [0-1] targets (valence, energy, danceability)
-   - **Fix**: Weighted loss `[2.0, 1.0, 2.0, 0.5]` - down-weight popularity
-   - **File**: `dl/02_train_mlp.py` lines 100-115
+This result is one of the strongest baselines in the project. It is the reason the later DL experiments had a high bar.
 
-4. **PyTorch 2.6 Breaking Change**
-   - **Problem**: `torch.load()` default changed to `weights_only=True`
-   - **Impact**: Checkpoint loading failed with UnpicklingError
-   - **Fix**: Added `weights_only=False` for trusted checkpoints
-   - **File**: `dl/02_train_mlp.py` line 207
+### Phase 4 DL Experiments A-H
 
-### Technical Implementation
+Completed scripts:
 
-**Architecture**: MusicMLP (from HitMusicNet paper)
-```
-Input (414) → FC1 (207) → ReLU → Dropout(0.5) 
-           → FC2 (138) → ReLU → Dropout(0.5)
-           → FC3 (4) → No activation (raw regression)
-```
+- `dl/06_multimodal_fusion.py` - Exp A, multi-branch fusion.
+- `dl/07_gated_multimodal.py` - Exp B, global gated fusion.
+- `dl/08_task_gated_multimodal.py` - Exp C, per-target gated fusion.
+- `dl/09_training_recipe.py` - Exp D, scheduler/scaling recipe.
+- `dl/10_wider_deeper.py` - Exp E, wider/deeper model.
+- `dl/11_feature_engineering.py` - Exp F, engineered metadata + R2 checkpointing.
+- `dl/12_cross_modal_attention.py` - Exp G, cross-modal attention.
+- `dl/13_loss_tuning.py` - Exp H, Huber + uncertainty weighting.
 
-**Training Configuration:**
-- Loss: MSELoss with weighted reduction `[2.0, 1.0, 2.0, 0.5]`
-- Optimizer: Adam (lr=0.001)
-- Batch size: 256
-- Early stopping: patience=10 (stopped at epoch 32)
-- Seed: 42 (reproducible)
-- Device: CUDA (GPU)
+Best observed DL results across A-H:
 
-**Files Created:**
-```
-dl/
-├── 01_xor_network.py          # XOR learning exercise (10K epochs, 8 hidden units)
-├── 02_train_mlp.py             # Main MLP trainer (weighted multi-task loss)
-├── test_setup.py               # Setup verification script
-├── README.md                   # Phase 0 documentation
-└── utils/
-    ├── __init__.py
-    ├── data_loaders.py         # PyTorch Dataset with deterministic shuffling
-    ├── models.py               # MusicMLP (no final activation)
-    ├── metrics.py              # R², RMSE, MAE evaluation
-    └── reproducibility.py      # Centralized seed management
+| Target | Best DL R2 | Source | Ultimate XGBoost R2 | Status |
+|---|---:|---|---:|---|
+| Valence | 0.7181 | Exp H | 0.6728 | DL wins |
+| Energy | 0.9069 | Exp H | 0.9073 | Tie / tiny ML lead |
+| Danceability | 0.7699 | Exp F | 0.7693 | Tie / tiny DL lead |
+| Popularity | 0.1133 | Exp C/D | 0.1478 | ML wins |
 
-models/checkpoints/
-└── mlp_baseline_best.pt        # Best model (epoch 22, val_loss=0.2733)
+Best single DL model for average performance:
 
-results/dl_metrics/
-├── mlp_baseline_20260331_022237.csv  # Unweighted results
-└── mlp_baseline_20260331_024129.csv  # Weighted results (final)
-```
+`results/dl_metrics/exp_f_feat_eng_20260517_231126.csv`
 
-### Lessons Learned
+| Target | R2 |
+|---|---:|
+| Valence | 0.7176 |
+| Energy | 0.9067 |
+| Danceability | 0.7699 |
+| Popularity | 0.0645 |
+| Average | 0.6147 |
 
-1. **Gradient Boosting dominates tabular data** - Expected that MLP on engineered features would underperform
-2. **DL needs better representations** - Next phases focus on learned representations (BERT, audio embeddings)
-3. **Multi-task learning requires balance** - Different target scales need weighted loss
-4. **Reproducibility is critical** - Always set seeds for research methodology
-5. **Target transformations matter** - Must match preprocessing (log1p) to model architecture
+Key finding:
 
-### Why DL Lost to ML (Expected)
-
-- **Engineered features**: 384 sentence embeddings, 23 Spotify audio features already optimal for ML
-- **Tabular data**: Gradient boosting (XGBoost, CatBoost) designed for this
-- **No representation learning**: MLP just transforms existing features, doesn't learn new ones
-- **Small model**: 115K parameters vs ensemble of 1000+ trees
-
-### Where DL Will Win (Future Phases)
-
-- **Phase 1 (BERT)**: Fine-tuned BERT will capture lyric semantics better than MiniLM embeddings
-- **Phase 3 (Audio)**: Raw audio → learned embeddings will beat hand-crafted Spotify features  
-- **Phase 4 (Architecture)**: Attention, multi-modal fusion, deeper networks
+- Exp F is the strongest single DL model for Valence/Energy/Danceability.
+- Exp H is not a clean overall improvement because uncertainty weighting hurts Popularity and Danceability.
+- Popularity remains better handled by classical ML, likely because it depends more on artist/contextual metadata and external factors than learned audio/text representations.
 
 ---
 
-## ✅ Phase 1A: MPNet Embeddings (COMPLETE)
+## Methodology Caveat
 
-### Timeline
-- **Started**: March 31, 2026
-- **Completed**: March 31, 2026
-- **Duration**: 4 hours runtime
+Some ML result folders use names like `ultimate_test`, but the scripts historically loaded `X_val_*` and `y_val_*`. These should be treated as validation/selection results unless the script is made split-explicit and rerun on `test`.
 
-### Achievements
+Going forward:
 
-**MPNet Embeddings Extracted:**
-```
-data/embeddings/
-├── mpnet_lyrics_768d_train.npy  (374,997 songs, 1098.6 MB)
-├── mpnet_lyrics_768d_val.npy    (89,172 songs, 261.2 MB)
-└── mpnet_lyrics_768d_test.npy   (86,453 songs, 253.3 MB)
-
-Total: 1.6GB of 768-d embeddings for all 550K songs
-```
-
-**Model Details:**
-- **Model**: sentence-transformers/all-mpnet-base-v2 (Microsoft)
-- **Embedding dimension**: 768-d (double Phase 0's 384-d MiniLM)
-- **Max sequence**: 512 tokens (~3000 chars)
-- **Processing**: Batch size 32, 4 hours total, ~1.09 it/s
-
-**Technical Implementation:**
-- Checkpoint logic: Rerun-safe (skips existing files)
-- Memory management: torch.cuda.empty_cache() between splits
-- Truncation: Lyrics limited to 3000 chars max
-- Script: `dl/03_extract_better_embeddings.py` (207 lines)
-
-### Key Decisions
-
-1. **MPNet chosen over**:
-   - DistilBERT: Sentence-transformers optimized for embeddings
-   - GTE-base-v1.5: CUDA compatibility issues (rotary pos embeddings)
-   - MiniLM-L6-v2: MPNet better semantic understanding
-
-2. **Frozen embeddings first**:
-   - Validate improvement before fine-tuning investment
-   - Fast to test (no training needed)
-   - Phase 1B will show if fine-tuning needed
-
-3. **Feature composition**:
-   - Phase 0: 414 features (23 audio + 5 text + 2 sentiment + 384 MiniLM)
-   - Phase 1: 798 features (23 audio + 5 text + 2 sentiment + 768 MPNet)
-   - 384 additional features from better text understanding
-
-### Why This Helps
-
-- **Better semantic understanding**: MPNet trained on massive corpus for similarity
-- **Double capacity**: 768-d vs 384-d captures richer lyric semantics
-- **Expected**: Valence R² improvement (0.45 → 0.50+)
-- **Target**: Better emotion understanding from lyrics
-
-### Technical Challenges Resolved
-
-1. **OOM at batch_size=256**: Reduced to 32 for 6GB VRAM
-2. **GTE CUDA errors**: Skipped in favor of proven MPNet
-3. **Lyrics truncation**: Some songs exceed 512 token limit
-4. **Memory fragmentation**: Added PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
-### Files Created
-```
-dl/03_extract_better_embeddings.py  # 207 lines, MPNet extraction script
-data/embeddings/mpnet_lyrics_768d_*.npy  # 3 files (train/val/test)
-```
-
-### Next Phase
-
-**Phase 1B - Train MLP with MPNet:**
-1. Load MPNet embeddings (768-d)
-2. Concatenate with existing features (23 audio + 5 text + 2 sentiment)
-3. Train MusicMLP on 798 total features
-4. Compare to Phase 0 baseline (414 features)
-5. Expected: Valence improvement from better text understanding
+1. Validation split is for model/architecture selection.
+2. Test split is for final thesis reporting only.
+3. Result filenames must include the evaluated split explicitly.
+4. Final tables should not mix validation and test numbers.
 
 ---
 
-## ✅ Phase 1B: MLP with MPNet Embeddings (COMPLETE)
+## Current Next Step
 
-### Timeline
-- **Started**: March 31, 2026
-- **Completed**: April 1, 2026 (01:21 UTC)
-- **Duration**: ~2 hours training time
+Build a thesis-ready DL comparison script similar in spirit to `ml/models/enhanced_models.py`, but with a small number of interpretable neural architectures:
 
-### Final Results (Test Set R²) - VERIFIED
+1. Flat all-feature MLP.
+2. Multi-branch fusion MLP.
+3. Task-gated fusion MLP.
+4. Attention task-gated fusion MLP.
 
-**Comparison to Phase 0 (414 features → 798 features):**
-| Target | Phase 0 | Phase 1B | Improvement | Status |
-|--------|---------|----------|-------------|--------|
-| Valence | 0.3500 | **0.3792** | +0.0292 (+8.3%) | ✓ Better |
-| Energy | 0.7500 | **0.7539** | +0.0039 (+0.5%) | ≈ Similar |
-| Danceability | 0.4700 | **0.4978** | +0.0278 (+5.9%) | ✓ Better |
-| Popularity | 0.1200 | **0.1311** | +0.0111 (+9.3%) | ✓ Better |
-| **Average** | **0.4225** | **0.4405** | **+0.0180** | ✓ **4.3% improvement** |
-
-**Comparison to ML Baseline (Semester 1):**
-| Target | ML R² | DL R² | Gap | Status |
-|--------|-------|-------|-----|--------|
-| Valence | 0.45 | 0.3792 | -0.0708 | Still behind |
-| Energy | 0.81 | 0.7539 | -0.0561 | Still behind |
-| Danceability | 0.55 | 0.4978 | -0.0522 | Still behind |
-| Popularity | 0.13 | 0.1311 | +0.0011 | ≈ Equal |
-
-### Key Findings
-
-**✅ Positive Results:**
-- MPNet (768-d) improved over MiniLM (384-d) embeddings
-- Valence gained +0.0292 R² from better text understanding
-- Danceability gained +0.0278 R² (unexpected text benefit)
-- 4.3% overall improvement with minimal code change
-- Popularity now matches ML baseline
-
-**⚠️ Reality Check:**
-- DL still ~6-7% behind ML across all targets (expected for tabular data)
-- Energy and Danceability improvements minimal from better embeddings
-- Valence improvement exists but modest (+2.9% points)
-- Bigger architectural changes needed to close gap
-
-### Technical Details
-
-**Model**: Same MusicMLP architecture as Phase 0
-- Input: 798 features (23 audio + 5 text + 2 sentiment + 768 MPNet)
-- Architecture: 798 → 399 → 266 → 4 (ReLU + Dropout 0.5)
-- Parameters: 426,269 (vs 115K in Phase 0 with 414 features)
-
-**Training:**
-- Loss: MSELoss (unweighted - simpler for ablation)
-- Optimizer: Adam (lr=0.001)
-- Batch size: 256
-- Early stopping: patience=10
-- Seed: 42 (reproducible)
-- Device: CUDA (GPU)
-
-**Files Created:**
-```
-dl/04_train_mlp_with_mpnet.py                   # Training script with MPNet
-models/checkpoints/mlp_mpnet_best.pt            # Best model checkpoint
-results/dl_metrics/mlp_mpnet_20260401_012157.csv # Final metrics (timestamp-verified)
-```
-
-### Analysis: Did MPNet Help?
-
-**For Valence**: ✓ Yes, but modest
-- +0.0292 R² improvement (0.35 → 0.38)
-- Still -0.07 behind ML baseline (0.45)
-- Better text embeddings helped but insufficient alone
-
-**For Energy/Danceability**: ≈ Minimal
-- Energy: +0.0039 (noise-level improvement)
-- Danceability: +0.0278 (surprising - some lyric signal)
-- These targets rely more on audio features
-
-**For Popularity**: ✓ Equal to ML now
-- Crossed threshold: DL 0.1311 vs ML 0.13
-- Still very weak prediction (external factors dominate)
-
-### Decision Point: Next Phase Strategy
-
-**Option A: Fine-tune BERT (Phase 1C)** ⚠️ NOT RECOMMENDED
-- Rationale: MPNet only gave +2.9% on Valence
-- Cost: 10-20 hours training time, complex pipeline
-- Expected: Maybe +3-5% more (still behind ML's 0.45)
-- Risk: Diminishing returns on text alone - not worth the investment
-
-**Option B: Move to Phase 2 - Architecture Improvements** ✅ **CHOSEN PATH**
-- Rationale: Bigger gains from better model architecture
-- Options: Deeper networks, residual connections, attention
-- Expected: 5-10% improvement across all targets
-- Proven path: Focus on what DL does best (architecture vs feature engineering)
-
-**Option C: Move to Phase 3 - Audio Embeddings** ⚠️ BLOCKED
-- Rationale: Audio improvements would help Energy/Danceability most
-- Blocker: No audio files (only Spotify metadata)
-- Need to solve: yt-dlp acquisition or skip audio entirely
-
-### ✅ Final Decision: Proceed to Phase 2
-
-**Skip Phase 1C (BERT fine-tuning)** - Diminishing returns on text alone
-
-**Start Phase 2 - Architecture Improvements:**
-1. **Deeper networks**: 5-7 layers with residual connections
-2. **Attention mechanisms**: Learn feature importance dynamically
-3. **Better regularization**: LayerNorm, label smoothing, dropout tuning
-4. **Modality-specific encoders**: Separate processing for audio/text/embeddings
-5. **Task-specific heads**: Shared encoder + separate prediction heads per target
-6. **Advanced optimizers**: Try AdamW with cosine annealing
-
-### Why Phase 2 Is Right Choice
-
-- MPNet proved text improvements help (+4.3% overall)
-- But text alone won't close 8% gap to ML baseline
-- Architecture improvements affect ALL modalities simultaneously
-- Literature shows residual connections + attention consistently improve tabular DL
-- Can combine with existing MPNet embeddings for additive gains
-
----
-
-## 📋 Phase 0: PyTorch MLP Baseline (Starting Now)
-
-**Goal**: Establish DL baseline using existing 414 features, prove DL can match/beat ML
-
-### Completed
-- ✅ All Semester 1 preprocessing complete
-- ✅ 414 features ready as .npy files
-- ✅ Artist-aware splits created
-
-### In Progress
-- ⏳ Install PyTorch and W&B
-- ⏳ Learn PyTorch basics (Karpathy videos)
-- ⏳ Build XOR network (validate pipeline)
-- ⏳ Build MusicMLP on 414 features
-- ⏳ Compare to ML baseline
-
-### Success Criteria
-- MLP R² within 5% of ML baseline (proves DL works)
-- Training pipeline established (data loading, training loops, checkpointing)
-- Ready for Phase 1 improvements
-
----
-
-## 📋 Phase 1: Lyrics Deep Learning (Future)
-
-**Goal**: Improve text understanding with transformer models (biggest opportunity for Valence)
-
-### Approach
-1. **Fine-tune DistilBERT**: Multi-task regression on all 4 targets from lyrics
-2. **Lyric structure features**: Rhyme density, sentiment stats, repetition ratio, word uniqueness
-3. **Ablation study**: Compare MiniLM vs DistilBERT vs augmented
-
-### Expected Improvement
-- Valence R²: 0.45 → 0.55+ (main target)
-- Minimal change on Energy/Danceability (not lyric-dependent)
-
----
-
-## 📋 Phase 2: Autoencoder Compression (Optional)
-
-**Goal**: Apply HitMusicNet's compression strategy - reduce 414 → 83 features
-
-### Approach
-- Train autoencoder to compress features by 5×
-- Train MLP on compressed 83-d representation
-- Compare to MLP on 414-d raw features
-
-### Expected
-- May improve generalization by reducing noise
-- Optional phase - depends on Phase 0/1 results
-
----
-
-## 📋 Phase 3: Audio Deep Learning (Pending Data Acquisition)
-
-**Goal**: Add audio embeddings to improve Energy/Danceability
-
-### Current Blocker
-- No audio files exist (only Spotify API metadata)
-- Need to solve acquisition: yt-dlp vs FMA vs skip entirely
-- Storage constraint: 150GB available (tight for 550K songs)
-
-### If Audio Acquired
-- VGGish embeddings (128-d, general audio)
-- MERT embeddings (768-d, music-specific)
-- Expected: Energy/Danceability improve most
-
----
-
-## 📋 Phase 4: Architecture Experiments (Future)
-
-**Goal**: Try different network architectures beyond simple MLP
-
-### Ideas
-- Deeper networks (5+ layers)
-- Residual connections
-- Attention mechanisms
-- Separate encoders per modality (audio/text/metadata)
-- Multi-task learning variations
-
-### Approach
-- Ablation study to find best architecture per target
-- May use different models per target (like ML did)
-
----
-
-## 📋 Phase 5: Final Model & Deployment (Future)
-
-**Goal**: Package best model for production use
-
-### Tasks
-1. Select best configuration per target
-2. Train on full data (train + val combined)
-3. Test on held-out test set (ONCE only)
-4. Update Gradio app with best DL models
-5. Create final results notebook
-6. Update README with DL results
-
----
-
-## 🎵 Phase 2: Audio Data Acquisition (IN PROGRESS)
-
-### Timeline
-- **Started**: April 3, 2026
-- **Status**: Pilot phase (15K songs) - 5.7% complete
-- **Current**: Running optimized concurrent pipeline
-
-### The Audio Problem
-
-**Goal**: Acquire raw audio files for 550K songs to extract MERT/VGGish embeddings
-
-**Challenge**: No audio files exist - only Spotify metadata
-- ✅ Spotify API gives features (tempo, energy, etc.) but no audio
-- ❌ Can't extract learned embeddings without actual audio
-- 🎯 Need audio → MERT embeddings → better Energy/Danceability predictions
-
-**Options Considered**:
-1. ❌ FMA dataset - Only 106K songs, poor overlap with our 550K dataset
-2. ❌ Buy audio - Prohibitively expensive ($550K songs)
-3. ✅ **YouTube download** - Free, high success rate, legal fair use for research
-
-### Solution: YouTube Audio Pipeline
-
-**Approach**: Search YouTube for each song, validate match quality, download audio
-- Query format: `"{track_name}" {artist1} {artist2} {artist3} official audio`
-- Validation: Multi-factor confidence scoring (title + duration + artist matching)
-- Download: yt-dlp format 251 (Opus/WebM, ~3-4MB per song)
-- Quality threshold: ≥60% confidence score required
-
-### Pipeline Evolution
-
-**Version 1: Sequential (Baseline)**
-- Speed: 11.57s per song
-- Bottleneck: 2-second rate limit + sequential processing
-- Projection: 73.7 days for 550K songs ❌
-
-**Version 2: Optimized (Current)** - April 3, 2026
-- **Speed**: 1.8s per song (**6.4x faster**)
-- **Projection**: 11.5 days for 550K songs ✅
-- **Optimizations**:
-  1. yt-dlp Python API (32% faster than subprocess)
-  2. ThreadPoolExecutor (8 search workers, 4 download workers)
-  3. Producer-consumer pattern (search doesn't wait for download)
-  4. Reduced rate limiting (0.5s between 50-song batches vs 2s per song)
-  5. Thread-safe logging for concurrent writes
-
-### Pilot Test (15K Songs)
-
-**Purpose**: Validate feasibility before committing to 550K full run
-- Test success rate: Target ≥80% (songs correctly matched)
-- Test speed: Target ≤30s per song
-- Test storage: Target ≤4MB per song
-
-**Progress**:
-- **Completed**: 850/15,000 songs (5.7%)
-- **Downloaded**: 693 audio files successfully
-- **Success rate**: ~78% (acceptable, may improve with full pilot data)
-- **Avg speed**: 1.8s per song ✅ (beats 30s target by 94%)
-- **Avg file size**: ~4MB ✅ (within target)
-
-**Storage Estimate**:
-- 15K pilot: ~60GB (feasible)
-- 550K full: ~2.2TB (requires cleanup strategy or external drive)
-
-### Confidence Scoring Algorithm
-
-**Multi-factor validation (0-100 scale)**:
-- **Title similarity** (40 pts): Fuzzy match using token_sort_ratio
-- **Duration match** (30 pts): ±5s = 30pts, ±15s = 20pts, ±30s = 10pts
-- **Artist verification** (30 pts): Check YouTube title + uploader for artist names
-
-**Decision Thresholds**:
-- ≥80: High confidence - auto-download
-- 60-79: Medium confidence - download with warning
-- <60: Low confidence - skip
-
-### Technical Implementation
-
-**Files**:
-```
-scripts/audio-acquisition/
-├── 01_pilot_download.py        # Main concurrent pipeline (530 lines)
-├── 01_pilot_download_old.py    # Backup of sequential version
-├── validation.py                # Confidence scoring logic
-└── utils.py                     # Query formatting, parsing helpers
-
-data/audio/pilot/                # Downloaded audio files (Opus/WebM)
-data/logs/
-├── download_log_pilot.csv       # 19 columns: validation + results
-└── checkpoint_pilot.json        # Resume capability (every 50 songs)
-```
-
-**Features**:
-- ✅ Checkpoint every 50 songs (automatic resume)
-- ✅ Thread-safe concurrent processing
-- ✅ CSV formula injection protection
-- ✅ Atomic checkpoint writes (corruption-safe)
-- ✅ Rate limiting to avoid YouTube throttling
-- ✅ Comprehensive error logging
-
-### Decision Criteria (After 15K Pilot)
-
-**PROCEED** to 550K if:
-- Success rate ≥80%
-- Avg time ≤30s per song
-- Storage manageable
-
-**MODIFY** approach if:
-- Success rate 70-80% → Add manual review for medium confidence
-- Time 30-60s per song → Reduce to test+val sets only (175K songs)
-
-**ABORT** if:
-- Success rate <70% → Explore FMA subset or skip audio entirely
-- Time >60s per song → Not feasible
-
-### Next Steps
-
-1. ✅ Complete 15K pilot (currently at 850/15K)
-2. ⏳ Analyze results: success rate, timing, validation accuracy
-3. ⏳ Spot-check 50 random samples for false positives
-4. ⏳ Make decision: PROCEED / MODIFY / ABORT
-5. ⏳ If PROCEED: Run full 550K download (~11.5 days)
-
-### Benchmarks (Verified)
-
-**Tested optimizations (April 3, 2026)**:
-| Test | Result | Impact |
-|------|--------|--------|
-| subprocess vs Python API | 1.39s vs 1.05s | 32% faster |
-| Sequential vs 4 workers (search) | 1.09s vs 0.35s | 3.1x faster |
-| Sequential vs concurrent (full) | 4.24s vs 2.69s | 1.6x faster |
-| Producer-consumer pattern | 11.57s vs 2.27s | **5.1x faster** |
-| Real-world test (50 songs) | 11.57s vs 1.8s | **6.4x speedup** ✅
-
-### Why Audio Matters
-
-**Current gap to ML baseline** (Phase 1B results):
-- Valence: -7.1% (text-dependent, MPNet helped)
-- Energy: -6.9% (**audio-dependent, needs audio embeddings**)
-- Danceability: -9.5% (**audio-dependent, needs audio embeddings**)
-- Popularity: +0.8% (matches ML - external factors)
-
-**Expected improvement with audio**:
-- Energy R²: 0.75 → 0.80+ (MERT captures energy better than Spotify features)
-- Danceability R²: 0.50 → 0.56+ (Rhythm patterns from raw audio)
-- May unlock architectural improvements (multimodal fusion)
-
-### Alternative: Skip Audio Entirely
-
-If acquisition fails, can still achieve goals:
-- ✅ Architecture improvements (Phase 2) don't need audio
-- ✅ Valence focus (text-heavy) already has MPNet embeddings
-- ❌ Energy/Danceability will remain behind ML baseline
-
----
-
-## 📁 Directory Structure
-
-### Existing (Semester 1)
-```
-ml/features/                    ✅ 24 .npy files (941 MB)
-data/processed/                 ✅ CSV splits (train/val/test)
-notebooks/01-07_*.ipynb         ✅ Semester 1 analysis
-app/gradio_app.py               ✅ ML models deployed
-```
-
-### To Create (Semester 2)
-```
-dl/                             # Deep learning code (.py scripts)
-├── 01_xor_network.py
-├── 02_train_mlp.py
-├── 03_finetune_distilbert.py
-├── 04_extract_lyric_structure.py
-├── 05_train_autoencoder.py
-├── 06_extract_audio_embeddings.py
-└── utils/
-
-data/embeddings/                # New DL embeddings (.npy)
-models/checkpoints/             # PyTorch .pt weights
-results/dl_metrics/             # Training results CSVs
-notebooks/08-12_*.ipynb         # DL analysis notebooks
-```
-
----
-
-## 🎯 Success Metrics
-
-### Conservative (Minimum)
-- Beat ML on Valence (0.45 → 0.50+)
-- Match ML on Energy/Danceability
-
-### Moderate (Expected)
-- Beat ML on Valence and Danceability
-- Slight Popularity improvement
-
-### Ambitious (Goal)
-- Beat ML baseline on ALL 4 targets
-- Valence: 0.45 → 0.55+
-- Popularity: 0.13 → 0.18+
-
----
-
-## 📦 Tech Stack (Install as Needed)
-
-### Phase 0 (Now)
-```bash
-pip install torch wandb
-```
-
-### Phase 1 (Later)
-```bash
-pip install transformers vaderSentiment pronouncing
-```
-
-### Phases 2-5 (Future)
-- Phase 2: PyTorch only (no new installs)
-- Phase 3: `librosa torchaudio` (if audio acquired)
-- Phase 4: PyTorch only
-- Phase 5: `shap` for explainability
-
----
-
-## 📝 Key Notes
-
-- **No timelines**: Flexible pace, work through phases sequentially
-- **semester2-full-plan.md**: External inspiration (not exact roadmap)
-- **ROADMAP.md**: Actual detailed plan for this project
-- **Audio optional**: Can achieve success without solving audio acquisition
-- **Convention**: Python scripts for training, notebooks for visualization
-- **Focus**: BERT for Valence is clearest improvement path
-
----
-
-## 🎯 Immediate Next Actions
-
-1. ⏳ **Install PyTorch**: `pip install torch wandb`
-2. ⏳ **Learn basics**: Watch Karpathy videos, understand tensors
-3. ⏳ **Create dl/ directory**: `mkdir -p dl/utils`
-4. ⏳ **Build XOR network**: Simple 4-point problem to validate pipeline
-5. ⏳ **Build MLP baseline**: Train on 414 features
-6. ⏳ **Create notebook**: Compare DL vs ML results
-7. ⏳ **Decide next phase**: Based on Phase 0 results (likely Phase 1 BERT)
+The goal is not more overkill architecture search. The goal is clean, reproducible, comparable results for the thesis.

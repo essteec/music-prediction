@@ -57,7 +57,7 @@ def load_mpnet_data(batch_size=256, num_workers=4):
         sentiment = np.load(feat_dir / f'X_{split_name}_sentiment.npy')
         
         # Load MPNet embeddings (768-d)
-        mpnet = np.load(emb_dir / f'mpnet_lyrics_768d_{split_name}.npy')
+        mpnet = np.load(feat_dir / f'X_{split_name}_mpnet.npy')
         
         # Concatenate all features
         X = np.hstack([audio, text, sentiment, mpnet])
