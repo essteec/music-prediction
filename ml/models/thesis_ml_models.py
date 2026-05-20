@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import json
 import time
 import warnings
 from datetime import datetime
@@ -115,6 +116,16 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=42,
         help="Random seed used for sampling and model reproducibility.",
+    )
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Ignore any existing checkpoint and start a new run.",
+    )
+    parser.add_argument(
+        "--force-resume",
+        action="store_true",
+        help="Resume even if checkpoint metadata does not match current run config.",
     )
     return parser.parse_args()
 
@@ -251,6 +262,38 @@ def save_results(rows: list[dict], results_path: Path) -> None:
     pd.DataFrame(rows).to_csv(results_path, index=False)
 
 
+def build_completed_set(rows: list[dict]) -> set[str]:
+    completed = set()
+    for row in rows:
+        target = row.get("target")
+        model = row.get("model")
+        if target and model:
+            completed.add(f"{target}|{model}")
+    return completed
+
+
+def load_checkpoint(checkpoint_path: Path) -> dict:
+    if not checkpoint_path.exists():
+        return {}
+    with checkpoint_path.open("r") as f:
+        return json.load(f)
+
+
+def save_checkpoint(checkpoint_path: Path, payload: dict) -> None:
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    with checkpoint_path.open("w") as f:
+        json.dump(payload, f, indent=2)
+
+
+def is_checkpoint_compatible(checkpoint: dict, run_meta: dict) -> bool:
+    if not checkpoint:
+        return False
+    for key, value in run_meta.items():
+        if checkpoint.get(key) != value:
+            return False
+    return True
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
@@ -261,9 +304,51 @@ def main() -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_path = results_dir / f"thesis_ml_results_{args.eval_split}_{timestamp}.csv"
-    summary_path = results_dir / f"thesis_ml_model_summary_{args.eval_split}_{timestamp}.csv"
+    train_split_label = "train" if args.eval_split == "val" else "train+val"
+    run_meta = {
+        "eval_split": args.eval_split,
+        "features": FEATURE_SET_NAME,
+        "n_features": N_FEATURES,
+        "mlp_max_samples": args.mlp_max_samples,
+        "seed": args.seed,
+        "train_split": train_split_label,
+    }
+    checkpoint_path = results_dir / f"thesis_ml_checkpoint_{args.eval_split}.json"
+    checkpoint = {} if args.fresh else load_checkpoint(checkpoint_path)
+
+    run_id = None
+    rows: list[dict] = []
+    completed: set[str] = set()
+
+    if checkpoint and not args.fresh:
+        if is_checkpoint_compatible(checkpoint, run_meta) or args.force_resume:
+            print("\nResuming from checkpoint...")
+            run_id = checkpoint.get("run_id")
+        else:
+            print("\n⚠️ Checkpoint metadata does not match current run config.")
+            print("   Starting a new run. Use --force-resume to override.")
+            checkpoint = {}
+
+    if run_id is None:
+        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    timestamp = run_id
+    results_path = results_dir / f"thesis_ml_results_{args.eval_split}_{run_id}.csv"
+    summary_path = results_dir / f"thesis_ml_model_summary_{args.eval_split}_{run_id}.csv"
+
+    if checkpoint and not args.fresh:
+        if results_path.exists():
+            rows = pd.read_csv(results_path).to_dict("records")
+        else:
+            rows = checkpoint.get("results", [])
+        completed = set(checkpoint.get("completed", [])) or build_completed_set(rows)
+
+    expected = {f"{t}|{m}" for t in TARGETS for m in args.models}
+    if completed and expected.issubset(completed):
+        print("\nAll requested model/target combinations already completed.")
+        print(f"Results: {results_path}")
+        print(f"Checkpoint: {checkpoint_path}")
+        return
 
     print("=" * 80)
     print("THESIS ML MODELS - DL-EQUIVALENT INPUTS")
@@ -284,7 +369,6 @@ def main() -> None:
     print(f"X_fit:           {X_fit.shape}")
     print(f"X_eval:          {X_eval.shape}")
 
-    rows = []
     for target in TARGETS:
         print("\n" + "=" * 80)
         print(f"TARGET: {target.upper()}")
@@ -296,6 +380,10 @@ def main() -> None:
         print(f"y_eval: {y_eval.shape}  mean={y_eval.mean():.4f}  std={y_eval.std():.4f}")
 
         for model_name in args.models:
+            completion_key = f"{target}|{model_name}"
+            if completion_key in completed:
+                print(f"\nSkipping {model_name} for {target} (already completed)")
+                continue
             print(f"\nTraining/evaluating {model_name} for {target}...")
             start_total = time.perf_counter()
             train_time = 0.0
@@ -338,6 +426,7 @@ def main() -> None:
                 "total_time_seconds": float(total_time),
             }
             rows.append(row)
+            completed.add(completion_key)
 
             if model is not None and not args.no_save_models:
                 model_path = models_dir / f"{model_name}_{target}.pkl"
@@ -347,6 +436,14 @@ def main() -> None:
                 row["model_path"] = ""
 
             save_results(rows, results_path)
+            checkpoint_payload = {
+                "run_id": run_id,
+                **run_meta,
+                "completed": sorted(completed),
+                "results": rows,
+                "last_update": datetime.now().isoformat(),
+            }
+            save_checkpoint(checkpoint_path, checkpoint_payload)
             print(
                 f"  R2={metrics['r2']:.4f}  RMSE={metrics['rmse']:.4f}  "
                 f"MAE={metrics['mae']:.4f}  train={train_time:.1f}s  total={total_time:.1f}s"
