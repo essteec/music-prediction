@@ -234,7 +234,15 @@ class MultiModalDataset(Dataset):
         for transform. Otherwise memory-maps for lower RAM usage."""
         if name in self.scalers:
             arr = np.load(path).astype(np.float32)
-            return self._scale(name, arr)
+            # Preserve zero-padding mask BEFORE scaling (Bug #2 fix).
+            # Absent modalities (audio extraction failed) are stored as all-zeros.
+            # Scaling transforms zeros to non-zero, breaking the presence mask
+            # used by gating models (GatedFusionMLP, TaskGatedFusionMLP,
+            # AttentionTaskGatedFusionMLP).
+            zero_rows = arr.abs().sum(axis=1) == 0
+            arr = self._scale(name, arr)
+            arr[zero_rows] = 0.0
+            return arr
         return np.load(path, mmap_mode='r')
 
     def __len__(self):

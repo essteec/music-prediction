@@ -38,7 +38,6 @@ def parse_args():
     parser.add_argument("--trials", type=int, default=20, help="Number of HPO trials")
     parser.add_argument("--epochs", type=int, default=100, help="Max epochs per trial")
     parser.add_argument("--patience", type=int, default=20, help="Early stopping patience")
-    parser.add_argument("--batch-size", type=int, default=512, help="Batch size")
     parser.add_argument("--feat-dir", type=str, default="ml/features", help="Feature directory")
     parser.add_argument("--results-root", type=str, default="results/hpo", help="Output directory")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
@@ -113,17 +112,33 @@ def evaluate(model, loader, criterion, device, weights):
     return total / len(loader), metrics
 
 
-def load_data(batch_size, feat_dir, num_workers, seed, scaler_dir):
-    print("\nLoading multi-modal datasets:")
+def load_datasets(feat_dir, scaler_dir):
+    """Load multi-modal datasets once, cache across trials."""
+    print("\nLoading multi-modal datasets (once)...")
     train_ds = MultiModalDataset("train", feat_dir, scaler_dir)
     val_ds = MultiModalDataset("val", feat_dir, scaler_dir)
-    train_loader = build_loader(train_ds, batch_size, True, num_workers, seed)
-    val_loader = build_loader(val_ds, batch_size, False, num_workers, seed)
-    print(f"\n  Train: {len(train_loader):,} batches  Val: {len(val_loader):,} batches")
-    return train_loader, val_loader
+    print(f"\n  Train samples: {len(train_ds):,}  Val samples: {len(val_ds):,}")
+    return train_ds, val_ds
 
 
-def objective(trial, args, device):
+def _to_native(obj):
+    """Recursively convert numpy types to Python native types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _to_native(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_native(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_to_native(v) for v in obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
+
+def objective(trial, args, device, train_ds, val_ds):
     lr = trial.suggest_float("lr", 5e-5, 8e-4, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-4, 5e-2, log=True)
     dropout_enc = trial.suggest_float("dropout_enc", 0.1, 0.4)
@@ -135,10 +150,9 @@ def objective(trial, args, device):
         dropout_fusion=dropout_fusion,
     ).to(device)
 
-    # Build loaders with trial-specific batch size
-    trial_train_loader, trial_val_loader = load_data(
-        batch_size, args.feat_dir, args.num_workers, args.seed, args.scaler_dir
-    )
+    # Build loaders from cached datasets (no disk I/O)
+    trial_train_loader = build_loader(train_ds, batch_size, True, args.num_workers, args.seed)
+    trial_val_loader = build_loader(val_ds, batch_size, False, args.num_workers, args.seed)
 
     criterion = nn.MSELoss(reduction="none")
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -174,7 +188,7 @@ def objective(trial, args, device):
                 break
 
     trial.set_user_attr("best_epoch", int(best_epoch))
-    trial.set_user_attr("best_val_metrics", best_val_metrics)
+    trial.set_user_attr("best_val_metrics", _to_native(best_val_metrics))
     trial.set_user_attr("best_val_r2", float(best_val_r2))
 
     return best_val_r2
@@ -197,8 +211,11 @@ def main():
     print(f"Max epochs/trial:  {args.epochs}")
     print(f"Patience:          {args.patience}")
 
-    # Store scaler_dir in args so objective can rebuild loaders per trial
+    # Store scaler_dir in args so objective can access it
     args.scaler_dir = scaler_dir
+
+    # Load datasets once — cached across all trials (Bug #3 fix)
+    train_ds, val_ds = load_datasets(args.feat_dir, scaler_dir)
 
     study = optuna.create_study(
         direction="maximize",
@@ -211,9 +228,8 @@ def main():
 
     print(f"\nRunning {args.trials} trials...")
 
-    # Each trial builds its own loaders (handles varying batch_size)
     def objective_wrapper(trial):
-        return objective(trial, args, device)
+        return objective(trial, args, device, train_ds, val_ds)
 
     study.optimize(objective_wrapper, n_trials=args.trials, show_progress_bar=True)
 
@@ -236,7 +252,7 @@ def main():
     # Save best params
     best_path = results_dir / "attention_dl_best_params.json"
     with open(best_path, "w") as f:
-        json.dump({
+        json.dump(_to_native({
             "timestamp": timestamp,
             "model_name": "AttentionTaskGatedFusionMLP",
             "best_value": float(study.best_value),
@@ -257,7 +273,7 @@ def main():
                 "For final test, retrain AttentionTaskGatedFusionMLP on train+val only "
                 "using best_params and best_epoch, then evaluate once on test."
             ),
-        }, f, indent=2)
+        }), f, indent=2)
     print(f"Best params saved to: {best_path}")
 
     # Pruning report
