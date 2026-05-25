@@ -34,7 +34,7 @@ Reason: affected by the NPZ split-index bug. Do not use it as a true result.
 
 ---
 
-## Best DL Results So Far
+## Best DL Results So Far (Diagnostic Only)
 
 | Target | Best DL R2 | Source | vs Ultimate XGBoost |
 |---|---:|---|---:|
@@ -60,6 +60,8 @@ Interpretation:
 - Exp F is strong and explainable: task-gated multimodal fusion plus small metadata interactions and R2-based checkpointing.
 - Exp H is useful diagnostically, but not the preferred thesis model because uncertainty weighting hurts Popularity and Danceability.
 - Popularity should be discussed honestly as a target where metadata/external effects dominate and tree models remain stronger.
+
+Note: these results were produced on the test split during Phase 4 development. They should not be used for architecture selection in the thesis. The thesis comparison must be re-run on validation only.
 
 ---
 
@@ -119,12 +121,13 @@ Recommended file:
 
 ### Architectures To Compare
 
-| Architecture | Purpose | Complexity |
-|---|---|---|
-| `FlatAllMLP` | Baseline neural model on all concatenated features | Low |
-| `MultiModalFusionMLP` | Tests whether modality-specific encoders help | Medium |
-| `TaskGatedFusionMLP` | Tests target-specific modality weighting | Medium |
-| `AttentionTaskGatedFusionMLP` | One advanced architecture with cross-modal interaction | High |
+| Architecture | Purpose | Complexity | Notes |
+|---|---|---|---|
+| `FlatAllMLP` | Baseline neural model on all concatenated features | Low | Same inputs as ML/Ultimate (4254d) |
+| `MultiModalFusionMLP` | Tests whether modality-specific encoders help | Medium | Exp A equivalent |
+| `TaskGatedFusionMLP` | Tests target-specific modality weighting | Medium | Exp C equivalent |
+| `AttentionTaskGatedFusionMLP` | Advanced architecture with cross-modal interaction | High | Exp G equivalent |
+| `TaskGatedFusionMLP + FeatureEng` | Best-optimized variant | High | Exp F equivalent (metadata interactions + R2 checkpoint)
 
 Optional only if needed:
 
@@ -133,6 +136,8 @@ Optional only if needed:
 | `WideTaskGatedFusionMLP` | You need a capacity ablation and can explain it clearly |
 
 Do not include every A-H experiment in the thesis comparison table. A-H can be summarized as development history, but the main table should use the clean architecture set above.
+
+Important: keep feature engineering as an explicit variant. It should not be silently mixed into all architectures unless we want to claim that metadata interactions are part of the baseline input definition.
 
 ### Required Script Behavior
 
@@ -186,6 +191,7 @@ Should include:
 2. imports/re-exports for existing `MultiModalFusionMLP`
 3. imports/re-exports for existing `TaskGatedFusionMLP`
 4. imports/re-exports for existing `AttentionTaskGatedFusionMLP`
+5. `TaskGatedFusionMLP` with optional metadata feature engineering flag (Exp F variant)
 
 Rationale:
 

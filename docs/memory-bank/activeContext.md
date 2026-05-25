@@ -3,9 +3,9 @@
 ## Current Status
 
 **Phase**: Thesis consolidation after Phase 4 DL experiments  
-**Status**: Experiments A-H have been run. DL is now competitive with the corrected Ultimate ML baseline on Valence, Energy, and Danceability, but still trails on Popularity.  
-**Current Goal**: Stop broad architecture search and prepare a small, clean, thesis-ready comparison of ML vs DL methods.  
-**Next**: Build a DL equivalent of `ml/models/enhanced_models.py` with 3-5 clear architectures, then produce comparable validation/final-test result tables.
+**Status**: Both `ml/models/thesis_ml_models.py` and `dl/14_thesis_architecture_comparison.py` have been run on validation. CatBoost emerged as the strongest ML model (avg R² 0.647), beating the best DL architecture (AttentionTaskGatedFusionMLP, avg R² 0.631) on 3 of 4 targets. The earlier narrative that "DL wins Valence" was based on comparing against XGBoost (0.673) — but CatBoost (0.713) nearly ties DL (0.718) on Valence.  
+**Current Goal**: Decision point — either go to final test evaluation, or run a focused 30-trial HPO on CatBoost, XGBoost, and AttentionTaskGatedFusionMLP to see if tuning changes the ranking.  
+**Next**: Review updated `implementation_plan_2.md` and decide whether to run HPO or skip to final test.
 
 ---
 
@@ -31,35 +31,51 @@ That failed run produced negative Valence/Danceability because of the NPZ split-
 
 ---
 
-## Corrected Phase 4 DL Reality
+## Validation Results — Thesis ML vs DL Comparison
 
-Best observed DL results across A-H:
+Both validation scripts completed. Results from:
 
-| Target | Best DL R2 | Source | vs Ultimate XGBoost |
-|---|---:|---|---:|
-| Valence | 0.7181 | Exp H | +0.0453 |
-| Energy | 0.9069 | Exp H | -0.0004 |
-| Danceability | 0.7699 | Exp F | +0.0006 |
-| Popularity | 0.1133 | Exp C/D | -0.0345 |
+- `results/metrics/thesis_ml_val/thesis_ml_results_val_20260520_011851.csv`
+- `results/dl_metrics/thesis_val/thesis_architecture_comparison_val_20260525_175338.csv`
 
-Best single DL model is Exp F:
+### Best ML: CatBoost
 
-`results/dl_metrics/exp_f_feat_eng_20260517_231126.csv`
+| Target | CatBoost R² |
+|---:|---:|
+| Valence | 0.7131 |
+| Energy | 0.9224 |
+| Danceability | 0.8027 |
+| Popularity | 0.1487 |
+| Average | 0.6467 |
 
-| Target | Exp F R2 |
-|---|---:|
-| Valence | 0.7176 |
-| Energy | 0.9067 |
-| Danceability | 0.7699 |
-| Popularity | 0.0645 |
-| Average | 0.6147 |
+### Best DL: AttentionTaskGatedFusionMLP
 
-Interpretation:
+| Target | AttentionDL R² |
+|---:|---:|
+| Valence | 0.7178 |
+| Energy | 0.9101 |
+| Danceability | 0.7897 |
+| Popularity | 0.1075 |
+| Average | 0.6313 |
 
-- DL strongly improves Valence, likely from multimodal/nonlinear representation learning.
-- DL ties Energy and Danceability within noise of the Ultimate XGBoost baseline.
-- DL does not solve Popularity; tree-based ML remains better for this noisy, metadata-heavy target.
-- Exp H improved Valence/Energy slightly but hurt Popularity and Danceability due to uncertainty weighting/downweighting behavior.
+### Head-to-Head
+
+| Target | CatBoost | Best DL | Winner | Margin |
+|---|---:|---:|---|---:|
+| Valence | 0.7131 | 0.7178 | Tie | DL +0.005 |
+| Energy | **0.9224** | 0.9101 | CatBoost | +0.012 |
+| Danceability | **0.8027** | 0.7897 | CatBoost | +0.013 |
+| Popularity | **0.1487** | 0.1075 | CatBoost | +0.041 |
+| **Avg** | **0.6467** | **0.6313** | **CatBoost** | **+0.015** |
+
+### Corrected Interpretation
+
+The earlier narrative was based on comparing DL against XGBoost (0.624 avg). CatBoost — which was not part of the original "Ultimate ML baseline" — performs significantly better:
+
+- CatBoost beats DL on 3/4 targets (Energy, Danceability, Popularity).
+- DL barely ties CatBoost on Valence (+0.005 — within noise).
+- CatBoost's ordered boosting handles the mixed tabular+embedding feature space better than XGBoost or multimodal DL.
+- The thesis story shifts from "DL improves Valence" to "CatBoost is the strongest model overall; DL only matches it on emotion prediction."
 
 ---
 
@@ -78,21 +94,31 @@ Rule going forward:
 
 ## Immediate Next Actions
 
-1. Run the split-explicit Ultimate ML validation baseline with `python ml/models/ultimate_models.py --eval-split val` if a clean replacement result is needed.
-2. Create a thesis-ready DL comparison script, analogous to `ml/models/enhanced_models.py`, but with only 3-5 interpretable DL architectures.
-3. Compare these DL architectures on the validation split using the same metric schema: R2, RMSE, MAE per target.
-4. Select final ML and DL candidates based on validation results.
-5. Run final test evaluation once and build the thesis comparison table.
+**Decision point — two paths:**
+
+**Path A: Skip HPO, go to final test.**
+```bash
+python ml/models/thesis_ml_models.py --eval-split test
+python dl/14_thesis_architecture_comparison.py --eval-split test --checkpoint-dir models/checkpoints/thesis
+```
+Then build the final thesis comparison table.
+
+**Path B: Run focused 30-trial HPO first.**
+See `implementation_plan_2.md` for the updated scope. Then final test after HPO completes.
+
+**Path A** is recommended if the ranking is already clear enough for the thesis.  
+**Path B** is worth it if you want to investigate whether HPO closes DL's gap on Valence or whether CatBoost can push Energy/Danceability even higher.
 
 ---
 
 ## Preferred Thesis DL Architecture Set
 
-Keep the comparison small and explainable:
+Keep the comparison small and explainable (5 architectures in `dl/14_thesis_architecture_comparison.py`):
 
-1. `FlatAllMLP`: simple concatenated all-feature neural baseline.
+1. `FlatAllMLP`: simple concatenated all-feature neural baseline (4254d).
 2. `MultiModalFusionMLP`: per-modality encoders with concatenation fusion.
 3. `TaskGatedFusionMLP`: per-target modality gates.
 4. `AttentionTaskGatedFusionMLP`: advanced but still explainable cross-modal attention variant.
+5. `TaskGatedFusionMLP_FeatEng`: best-optimized variant with metadata interactions + R² checkpoint (Exp F).
 
 Do not make DL ensemble or DL+ML ensemble the main thesis path. They may be optional appendix experiments, but the main story should be a clean architecture comparison.

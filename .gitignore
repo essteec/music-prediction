@@ -105,6 +105,8 @@ tmp/
 spotify-songs-with-attributes-and-lyrics.zip
 *.pdf
 
+.github
+
 # Keep directory structure
 !results/
 !results/models/

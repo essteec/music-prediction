@@ -89,14 +89,16 @@ Completed scripts:
 - `dl/12_cross_modal_attention.py` - Exp G, cross-modal attention.
 - `dl/13_loss_tuning.py` - Exp H, Huber + uncertainty weighting.
 
-Best observed DL results across A-H:
+Best observed DL results across A-H (compared to XGBoost baseline):
 
 | Target | Best DL R2 | Source | Ultimate XGBoost R2 | Status |
-|---|---:|---|---:|---|
+|---|---:|---:|---|---|
 | Valence | 0.7181 | Exp H | 0.6728 | DL wins |
 | Energy | 0.9069 | Exp H | 0.9073 | Tie / tiny ML lead |
 | Danceability | 0.7699 | Exp F | 0.7693 | Tie / tiny DL lead |
 | Popularity | 0.1133 | Exp C/D | 0.1478 | ML wins |
+
+Note: these compare DL against XGBoost (0.624 avg). The thesis_ml_models.py run later showed CatBoost achieves 0.647 avg, which changes the ranking significantly (see "Thesis Validation Runs" section below).
 
 Best single DL model for average performance:
 
@@ -110,11 +112,39 @@ Best single DL model for average performance:
 | Popularity | 0.0645 |
 | Average | 0.6147 |
 
-Key finding:
+### Thesis Validation Runs
 
-- Exp F is the strongest single DL model for Valence/Energy/Danceability.
-- Exp H is not a clean overall improvement because uncertainty weighting hurts Popularity and Danceability.
-- Popularity remains better handled by classical ML, likely because it depends more on artist/contextual metadata and external factors than learned audio/text representations.
+Both `ml/models/thesis_ml_models.py` and `dl/14_thesis_architecture_comparison.py` completed on validation.
+
+Results at:
+- `results/metrics/thesis_ml_val/thesis_ml_results_val_20260520_011851.csv`
+- `results/dl_metrics/thesis_val/thesis_architecture_comparison_val_20260525_175338.csv`
+
+**Critical finding: CatBoost (avg 0.647) beat the best DL model (AttentionTaskGatedFusionMLP, avg 0.631) on 3/4 targets.**
+
+| Target | CatBoost R² | Best DL R² | Winner |
+|---|---:|---:|---|
+| Valence | 0.7131 | 0.7178 | Tie (DL +0.005) |
+| Energy | **0.9224** | 0.9101 | CatBoost |
+| Danceability | **0.8027** | 0.7897 | CatBoost |
+| Popularity | **0.1487** | 0.1075 | CatBoost |
+
+This changes the thesis narrative. The earlier "DL wins Valence" claim was based on comparing against XGBoost (0.673). Against CatBoost (0.713), DL only ties. CatBoost's ordered boosting handles the mixed tabular+embedding 4254-feature space better than either XGBoost or multimodal DL.
+
+### Hyperparameter Optimization Plan
+
+`implementation_plan_2.md` updated to a focused 30-trial HPO on three models:
+- `CatBoost`: to see if Energy/Danceability can push higher
+- `XGBoost`: to see if tuning closes the gap with CatBoost
+- `AttentionTaskGatedFusionMLP`: to see if Valence can break away from CatBoost
+
+HPO is optional — the ranking is already clear enough for the thesis without it.
+
+### Thesis Infrastructure (DL)
+
+- `ml/models/thesis_ml_models.py`: split-explicit ML baseline on the 4254-feature DL-equivalent input set. Trains 8 model families (Mean, Ridge, XGBoost, LightGBM, CatBoost, MLPRegressor, ExtraTrees, RandomForest) with checkpointing and timing.
+- `dl/utils/thesis_models.py`: centralized source of truth for thesis DL architectures. Provides `FlatAllMLP`, re-exports `MultiModalFusionMLP`, `TaskGatedFusionMLP`, `AttentionTaskGatedFusionMLP`, and the `engineer_metadata()` helper for the feat eng variant.
+- `dl/14_thesis_architecture_comparison.py`: clean DL comparison pipeline. Supports `--eval-split val` (train + select by val R²) and `--eval-split test` (load checkpoints + evaluate). Runs 5 architectures with consistent hyperparams, saves checkpoints to `models/checkpoints/thesis/`.
 
 ---
 
@@ -133,11 +163,15 @@ Going forward:
 
 ## Current Next Step
 
-Build a thesis-ready DL comparison script similar in spirit to `ml/models/enhanced_models.py`, but with a small number of interpretable neural architectures:
+Validation runs are complete. The ranking is:
 
-1. Flat all-feature MLP.
-2. Multi-branch fusion MLP.
-3. Task-gated fusion MLP.
-4. Attention task-gated fusion MLP.
+1. **CatBoost** (avg 0.647) — strongest overall, wins 3/4 targets
+2. **AttentionTaskGatedFusionMLP** (avg 0.631) — best DL, ties Valence
+3. **XGBoost** (avg 0.624) — third, but may improve with HPO
+4. **TaskGatedFusionMLP** (avg 0.628) — close second DL
 
-The goal is not more overkill architecture search. The goal is clean, reproducible, comparable results for the thesis.
+**Decision point:**
+- **Path A (recommended):** Skip HPO, run final test evaluation, build thesis table.
+  - `python ml/models/thesis_ml_models.py --eval-split test`
+  - `python dl/14_thesis_architecture_comparison.py --eval-split test --checkpoint-dir models/checkpoints/thesis`
+- **Path B:** Run 30-trial HPO on CatBoost, XGBoost, AttentionTaskGatedFusionMLP first (see `implementation_plan_2.md`).
