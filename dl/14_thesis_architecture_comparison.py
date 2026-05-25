@@ -23,9 +23,10 @@ Outputs (test):
     results/dl_metrics/final_dl_test_<timestamp>.csv
 """
 
+import json
 import os
-import sys
 import random
+import sys
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +36,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, ConcatDataset
 
 sys.path.insert(0, str(Path(__file__).parent))
 from utils.data_loaders import MultiModalDataset, set_worker_seed
@@ -44,7 +46,6 @@ from utils.thesis_models import (
     AttentionTaskGatedFusionMLP, engineer_metadata,
     TARGET_NAMES, TOTAL_FLAT_DIM,
 )
-from torch.utils.data import DataLoader
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -304,7 +305,23 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument("--no-scaler", action="store_true",
                         help="Disable per-modality scaling (not recommended).")
+    parser.add_argument("--retrain", action="store_true",
+                        help="Retrain on train+val for test mode (fair protocol).")
+    parser.add_argument("--tuned-params", type=str, default=None,
+                        help="Path to JSON with tuned hyperparams for retrain mode.")
     return parser.parse_args()
+
+
+def load_combined_loader(splits, batch_size, feat_dir, num_workers, seed, scaler_dir=None, engineered=False):
+    """Load combined multi-modal data loader for multiple splits (e.g. train+val)."""
+    DatasetCls = EngineeredMultiModalDataset if engineered else MultiModalDataset
+    datasets = [DatasetCls(s, feat_dir, scaler_dir) for s in splits]
+    if len(datasets) == 1:
+        ds = datasets[0]
+    else:
+        ds = ConcatDataset(datasets)
+    shuffle = True  # always shuffle for training
+    return _build_loader(ds, batch_size, shuffle, num_workers, seed)
 
 
 def main():
@@ -379,61 +396,173 @@ def main():
         results_path = results_dir / f"final_dl_test_{timestamp}.csv"
         results_dir.mkdir(parents=True, exist_ok=True)
 
-        _, _, test_loader = load_data(
-            args.batch_size, args.feat_dir, args.num_workers, args.seed, scaler_dir
-        )
-        if needs_feat_eng:
-            _, _, test_eng = load_engineered_data(
-                args.batch_size, args.feat_dir, args.num_workers, args.seed, scaler_dir
-            )
-
-        checkpoint_dir = Path(args.checkpoint_dir)
-        if not checkpoint_dir.exists():
-            print(f"\nError: checkpoint directory '{checkpoint_dir}' not found.")
-            print("Run validation mode first to train and save checkpoints.")
-            sys.exit(1)
-
-        weights = LOSS_WEIGHTS.to(device)
-        rows = []
-        for arch in ARCHITECTURES:
-            ckpt_path = checkpoint_dir / f"{arch['name']}_best.pt"
-            if not ckpt_path.exists():
-                print(f"\n  Warning: checkpoint not found for {arch['name']} — skipping.")
-                continue
-
+        if args.retrain:
             print("\n" + "=" * 70)
-            print(f"ARCHITECTURE: {arch['name']}  (test evaluation)")
+            print("RETRAIN MODE — training on train+val from scratch")
             print("=" * 70)
 
-            use_eng = arch["feat_eng"]
-            tl = test_eng if use_eng else test_loader
+            train_val_loader = load_combined_loader(
+                ["train", "val"], args.batch_size, args.feat_dir,
+                args.num_workers, args.seed, scaler_dir, engineered=False
+            )
+            test_loader = load_combined_loader(
+                ["test"], args.batch_size, args.feat_dir,
+                args.num_workers, args.seed, scaler_dir, engineered=False
+            )
 
-            model = arch["model_cls"](**arch["model_kwargs"]).to(device)
-            ckpt = torch.load(ckpt_path, weights_only=False)
-            model.load_state_dict(ckpt["model_state_dict"])
-            loaded_epoch = ckpt.get("epoch", "?")
-            loaded_r2 = ckpt.get("val_r2", "?")
-            print(f"  Loaded checkpoint: epoch={loaded_epoch}, val_r2={loaded_r2}")
+            train_val_eng_loader = None
+            test_eng_loader = None
+            if needs_feat_eng:
+                train_val_eng_loader = load_combined_loader(
+                    ["train", "val"], args.batch_size, args.feat_dir,
+                    args.num_workers, args.seed, scaler_dir, engineered=True
+                )
+                test_eng_loader = load_combined_loader(
+                    ["test"], args.batch_size, args.feat_dir,
+                    args.num_workers, args.seed, scaler_dir, engineered=True
+                )
+
+            tuned_params = {}
+            tuned_target_model = None
+            if args.tuned_params:
+                with open(args.tuned_params) as f:
+                    tuned_params = json.load(f)
+                print(f"  Loaded tuned params: {tuned_params}")
+                # Extract best_epoch if present, else use full epoch count
+                best_params = tuned_params.get("best_params", tuned_params)
+                tuned_target_model = tuned_params.get("model_name", "AttentionTaskGatedFusionMLP")
+            else:
+                best_params = {}
 
             criterion = nn.MSELoss(reduction="none")
-            _, test_metrics = evaluate(model, tl, criterion, device, weights)
-            print_metrics(test_metrics, f"Test — {arch['name']}")
+            weights = LOSS_WEIGHTS.to(device)
+            rows = []
 
-            test_avg_r2 = float(np.mean([m["r2"] for m in test_metrics.values()]))
-            notes = "feat_eng" if arch["feat_eng"] else ""
-            selection_metric = f"test_avg_r2={test_avg_r2:.4f}"
+            for arch in ARCHITECTURES:
+                use_eng = arch["feat_eng"]
+                tr = train_val_eng_loader if use_eng else train_val_loader
+                tl = test_eng_loader if use_eng else test_loader
 
-            for target in TARGET_NAMES:
-                rows.append(build_result_row(
-                    arch, target, test_metrics, loaded_epoch,
-                    selection_metric, timestamp, "test", notes
-                ))
+                print("\n" + "=" * 70)
+                print(f"ARCHITECTURE: {arch['name']}  (train+val → test)")
+                print("=" * 70)
 
-        if rows:
-            save_results(rows, results_path)
-            print(f"\n✓ Final test results saved to: {results_path}")
+                apply_tuned_for_arch = bool(tuned_params) and arch["name"] == tuned_target_model
+
+                # Apply tuned params to model kwargs only for the intended architecture
+                model_kwargs = dict(arch["model_kwargs"])
+                if apply_tuned_for_arch and best_params.get("dropout_enc") is not None:
+                    model_kwargs["dropout_enc"] = best_params["dropout_enc"]
+                if apply_tuned_for_arch and best_params.get("dropout_fusion") is not None:
+                    model_kwargs["dropout_fusion"] = best_params["dropout_fusion"]
+
+                model = arch["model_cls"](**model_kwargs).to(device)
+                print(f"Parameters: {model.count_parameters():,}")
+
+                # Override training hyperparams
+                lr = best_params.get("lr", args.lr) if apply_tuned_for_arch else args.lr
+                weight_decay = best_params.get("weight_decay", args.weight_decay) if apply_tuned_for_arch else args.weight_decay
+                batch_size = best_params.get("batch_size", args.batch_size) if apply_tuned_for_arch else args.batch_size
+                n_epochs = tuned_params.get("best_epoch", args.epochs) if apply_tuned_for_arch else args.epochs
+
+                # Rebuild loaders if batch_size changed
+                if batch_size != args.batch_size:
+                    print(f"  Rebuilding loaders with batch_size={batch_size}")
+                    tr = load_combined_loader(
+                        ["train", "val"], batch_size, args.feat_dir,
+                        args.num_workers, args.seed, scaler_dir, engineered=use_eng
+                    )
+                    tl = load_combined_loader(
+                        ["test"], batch_size, args.feat_dir,
+                        args.num_workers, args.seed, scaler_dir, engineered=use_eng
+                    )
+
+                optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+                scaler = torch.amp.GradScaler("cuda", enabled=(device.type == "cuda"))
+
+                print(f"  Training for {n_epochs} epochs (lr={lr}, wd={weight_decay})")
+                for epoch in range(1, n_epochs + 1):
+                    train_loss = train_epoch(
+                        model, tr, criterion, optimizer, scaler, device, weights
+                    )
+                    if epoch % 10 == 0 or epoch == 1:
+                        print(f"  Epoch {epoch:>4}/{n_epochs}  train_loss={train_loss:.4f}")
+
+                _, test_metrics = evaluate(model, tl, criterion, device, weights)
+                print_metrics(test_metrics, f"Test — {arch['name']} (retrained)")
+
+                test_avg_r2 = float(np.mean([m["r2"] for m in test_metrics.values()]))
+                notes = "feat_eng" if arch["feat_eng"] else ""
+                if apply_tuned_for_arch:
+                    notes += ";tuned"
+                selection_metric = f"test_avg_r2={test_avg_r2:.4f}"
+
+                for target in TARGET_NAMES:
+                    rows.append(build_result_row(
+                        arch, target, test_metrics, n_epochs,
+                        selection_metric, timestamp, "test", notes
+                    ))
+
+            if rows:
+                save_results(rows, results_path)
+                print(f"\n✓ Final test results (retrained) saved to: {results_path}")
+
         else:
-            print("\nNo results to save — all architectures were skipped.")
+            _, _, test_loader = load_data(
+                args.batch_size, args.feat_dir, args.num_workers, args.seed, scaler_dir
+            )
+            if needs_feat_eng:
+                _, _, test_eng = load_engineered_data(
+                    args.batch_size, args.feat_dir, args.num_workers, args.seed, scaler_dir
+                )
+
+            checkpoint_dir = Path(args.checkpoint_dir)
+            if not checkpoint_dir.exists():
+                print(f"\nError: checkpoint directory '{checkpoint_dir}' not found.")
+                print("Run validation mode first to train and save checkpoints.")
+                sys.exit(1)
+
+            weights = LOSS_WEIGHTS.to(device)
+            rows = []
+            for arch in ARCHITECTURES:
+                ckpt_path = checkpoint_dir / f"{arch['name']}_best.pt"
+                if not ckpt_path.exists():
+                    print(f"\n  Warning: checkpoint not found for {arch['name']} — skipping.")
+                    continue
+
+                print("\n" + "=" * 70)
+                print(f"ARCHITECTURE: {arch['name']}  (test evaluation)")
+                print("=" * 70)
+
+                use_eng = arch["feat_eng"]
+                tl = test_eng if use_eng else test_loader
+
+                model = arch["model_cls"](**arch["model_kwargs"]).to(device)
+                ckpt = torch.load(ckpt_path, weights_only=False)
+                model.load_state_dict(ckpt["model_state_dict"])
+                loaded_epoch = ckpt.get("epoch", "?")
+                loaded_r2 = ckpt.get("val_r2", "?")
+                print(f"  Loaded checkpoint: epoch={loaded_epoch}, val_r2={loaded_r2}")
+
+                criterion = nn.MSELoss(reduction="none")
+                _, test_metrics = evaluate(model, tl, criterion, device, weights)
+                print_metrics(test_metrics, f"Test — {arch['name']}")
+
+                test_avg_r2 = float(np.mean([m["r2"] for m in test_metrics.values()]))
+                notes = "feat_eng" if arch["feat_eng"] else ""
+                selection_metric = f"test_avg_r2={test_avg_r2:.4f}"
+
+                for target in TARGET_NAMES:
+                    rows.append(build_result_row(
+                        arch, target, test_metrics, loaded_epoch,
+                        selection_metric, timestamp, "test", notes
+                    ))
+
+            if rows:
+                save_results(rows, results_path)
+                print(f"\n✓ Final test results saved to: {results_path}")
+            else:
+                print("\nNo results to save — all architectures were skipped.")
 
 
 if __name__ == "__main__":
