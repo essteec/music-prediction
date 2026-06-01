@@ -26,3 +26,8 @@
 ## Operating Constraint
 - Do not execute project Python scripts from the agent.
 - Provide commands for user execution when runs are needed.
+
+## HPO Tracking (Current)
+1. Focused HPO is active using `dl/15_hpo_attention_dl.py` and `ml/models/hpo_catboost.py`.
+2. All HPO runs must remain validation-only; do not use test for early stopping or selection.
+3. Record best params JSON outputs under `results/hpo/` and use them for final train+val retrain before the single test evaluation.

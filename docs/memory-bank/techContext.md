@@ -21,11 +21,17 @@
 - Invalid pre-fix Ultimate result: `results/metrics/ultimate_test/ultimate_results_20260516_184227.csv`
 - Best single DL model result: `results/dl_metrics/exp_f_feat_eng_20260517_231126.csv`
 - Loss-tuning diagnostic result: `results/dl_metrics/exp_h_loss_tuning_20260518_001715.csv`
+- Focused HPO outputs:
+  - `results/hpo/attention_dl_best_params.json`
+  - `results/hpo/attention_dl_hpo_val_<timestamp>.csv`
+  - `results/hpo/catboost_best_params.json`
+  - `results/hpo/catboost_hpo_val_<target>_<timestamp>.csv`
 
 ## Current Code Artifacts
 
 - ML all-feature baseline script: `ml/models/ultimate_models.py`
 - Existing broad ML comparison pattern: `ml/models/enhanced_models.py`
+- Focused HPO scripts: `ml/models/hpo_catboost.py`, `dl/15_hpo_attention_dl.py`
 - DL fusion architectures: `dl/utils/fusion.py`, `dl/utils/fusion_attention.py`, `dl/utils/fusion_wide.py`
 - DL architecture scripts: `dl/06_multimodal_fusion.py` through `dl/13_loss_tuning.py`
 

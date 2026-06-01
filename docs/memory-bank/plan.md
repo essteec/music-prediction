@@ -42,13 +42,13 @@ Corrected Ultimate XGBoost R2:
 
 ## Remaining Methodology Work
 
-1. Re-check `ml/models/ultimate_models.py` and ensure it is syntactically valid.
-2. Make `ultimate_models.py` explicit about evaluated split: `--eval-split val|test`.
-3. Ensure output path includes split name, for example:
-   - `results/metrics/ultimate_val/ultimate_results_val_<timestamp>.csv`
-   - `results/metrics/ultimate_test/ultimate_results_test_<timestamp>.csv`
+1. Complete focused HPO runs and record best params JSONs in `results/hpo/`:
+   - `dl/15_hpo_attention_dl.py`
+   - `ml/models/hpo_catboost.py`
+2. After HPO, retrain on `train+val` with tuned settings and evaluate once on `test`.
+3. Keep outputs split-explicit: `*_val_*.csv` vs `*_test_*.csv`.
 4. Treat older `*_test` folders as potentially validation results unless the script loaded `X_test_*`.
-5. Build DL comparison results using the same split discipline.
+5. Build final thesis comparison table using only test results.
 
 ---
 

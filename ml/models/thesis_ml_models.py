@@ -127,6 +127,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Resume even if checkpoint metadata does not match current run config.",
     )
+    parser.add_argument(
+        "--tuned-params",
+        type=str,
+        default=None,
+        help="Path to JSON with tuned hyperparams (e.g. for CatBoost).",
+    )
     return parser.parse_args()
 
 
@@ -180,7 +186,7 @@ def build_training_target(features_dir: Path, eval_split: str, target: str) -> n
     return np.concatenate([y_train, y_val]).astype(np.float32, copy=False)
 
 
-def get_model(model_name: str, seed: int):
+def get_model(model_name: str, seed: int, target: str = None, tuned_params: dict = None):
     """Return a single default/simple model instance.
 
     Memory-first defaults:
@@ -205,6 +211,20 @@ def get_model(model_name: str, seed: int):
             verbose=-1,
         )
     if model_name == "CatBoost":
+        if tuned_params and target and target in tuned_params.get("best_by_target", {}):
+            target_info = tuned_params["best_by_target"][target]
+            params = dict(target_info.get("full_params_for_refit", {}))
+            params["iterations"] = target_info.get("recommended_iterations_for_retrain", params.get("iterations", 1500))
+            if "random_state" not in params:
+                params["random_state"] = seed
+            # use_best_model requires an eval_set. During final test retraining we train
+            # on train+val with no held-out validation set, so this must be disabled.
+            # Similarly remove od_type/od_wait which only apply when eval_set is provided.
+            params["use_best_model"] = False
+            params.pop("od_type", None)
+            params.pop("od_wait", None)
+            print(f"    Loaded tuned params for {target}: iterations={params['iterations']}, use_best_model=False")
+            return CatBoostRegressor(**params)
         return CatBoostRegressor(
             random_state=seed,
             verbose=False,
@@ -285,6 +305,19 @@ def save_checkpoint(checkpoint_path: Path, payload: dict) -> None:
         json.dump(payload, f, indent=2)
 
 
+def load_tuned_params(path: str | None) -> dict | None:
+    if not path:
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def display_model_name(model_name: str, tuned_params: dict | None) -> str:
+    if model_name == "CatBoost" and tuned_params:
+        return "CatBoost_tuned"
+    return model_name
+
+
 def is_checkpoint_compatible(checkpoint: dict, run_meta: dict) -> bool:
     if not checkpoint:
         return False
@@ -303,6 +336,7 @@ def main() -> None:
     models_dir = repo_root / "ml" / "models" / "saved" / f"thesis_ml_{args.eval_split}"
     results_dir.mkdir(parents=True, exist_ok=True)
     models_dir.mkdir(parents=True, exist_ok=True)
+    tuned_params = load_tuned_params(args.tuned_params)
 
     train_split_label = "train" if args.eval_split == "val" else "train+val"
     run_meta = {
@@ -312,6 +346,7 @@ def main() -> None:
         "mlp_max_samples": args.mlp_max_samples,
         "seed": args.seed,
         "train_split": train_split_label,
+        "tuned_params_path": args.tuned_params or "",
     }
     checkpoint_path = results_dir / f"thesis_ml_checkpoint_{args.eval_split}.json"
     checkpoint = {} if args.fresh else load_checkpoint(checkpoint_path)
@@ -343,7 +378,7 @@ def main() -> None:
             rows = checkpoint.get("results", [])
         completed = set(checkpoint.get("completed", [])) or build_completed_set(rows)
 
-    expected = {f"{t}|{m}" for t in TARGETS for m in args.models}
+    expected = {f"{t}|{display_model_name(m, tuned_params)}" for t in TARGETS for m in args.models}
     if completed and expected.issubset(completed):
         print("\nAll requested model/target combinations already completed.")
         print(f"Results: {results_path}")
@@ -354,10 +389,12 @@ def main() -> None:
     print("THESIS ML MODELS - DL-EQUIVALENT INPUTS")
     print("=" * 80)
     print(f"Eval split:     {args.eval_split}")
-    print(f"Models:         {', '.join(args.models)}")
+    print(f"Models:         {', '.join(display_model_name(m, tuned_params) for m in args.models)}")
     print(f"Feature set:    {FEATURE_SET_NAME} ({N_FEATURES} features)")
     print(f"Save models:    {not args.no_save_models}")
     print(f"MLP max samples:{args.mlp_max_samples}")
+    if tuned_params:
+        print(f"Tuned params:   {args.tuned_params}")
 
     X_fit, train_split_label = build_training_data(features_dir, args.eval_split)
     X_eval = load_feature_matrix(features_dir, args.eval_split)
@@ -380,11 +417,12 @@ def main() -> None:
         print(f"y_eval: {y_eval.shape}  mean={y_eval.mean():.4f}  std={y_eval.std():.4f}")
 
         for model_name in args.models:
-            completion_key = f"{target}|{model_name}"
+            row_model_name = display_model_name(model_name, tuned_params)
+            completion_key = f"{target}|{row_model_name}"
             if completion_key in completed:
-                print(f"\nSkipping {model_name} for {target} (already completed)")
+                print(f"\nSkipping {row_model_name} for {target} (already completed)")
                 continue
-            print(f"\nTraining/evaluating {model_name} for {target}...")
+            print(f"\nTraining/evaluating {row_model_name} for {target}...")
             start_total = time.perf_counter()
             train_time = 0.0
 
@@ -393,7 +431,7 @@ def main() -> None:
                 model = None
                 n_train_used = int(len(y_fit))
             else:
-                model = get_model(model_name, args.seed)
+                model = get_model(model_name, args.seed, target, tuned_params)
                 X_fit_used, y_fit_used, n_train_used = maybe_subsample_for_model(
                     X_fit, y_fit, model_name, args.mlp_max_samples, args.seed
                 )
@@ -414,7 +452,7 @@ def main() -> None:
                 "split": args.eval_split,
                 "train_split": train_split_label,
                 "target": target,
-                "model": model_name,
+                "model": row_model_name,
                 "features": FEATURE_SET_NAME,
                 "n_features": N_FEATURES,
                 "n_train": int(len(y_fit)),
@@ -429,7 +467,7 @@ def main() -> None:
             completed.add(completion_key)
 
             if model is not None and not args.no_save_models:
-                model_path = models_dir / f"{model_name}_{target}.pkl"
+                model_path = models_dir / f"{row_model_name}_{target}.pkl"
                 joblib.dump(model, model_path)
                 row["model_path"] = str(model_path.relative_to(repo_root))
             else:

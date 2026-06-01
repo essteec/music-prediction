@@ -239,7 +239,7 @@ class MultiModalDataset(Dataset):
             # Scaling transforms zeros to non-zero, breaking the presence mask
             # used by gating models (GatedFusionMLP, TaskGatedFusionMLP,
             # AttentionTaskGatedFusionMLP).
-            zero_rows = arr.abs().sum(axis=1) == 0
+            zero_rows = np.abs(arr).sum(axis=1) == 0
             arr = self._scale(name, arr)
             arr[zero_rows] = 0.0
             return arr

@@ -97,7 +97,7 @@ Selection criteria:
 
 ### Stage 4: Final Test Evaluation
 
-After ML and DL candidates are selected, run final test evaluation once.
+After ML and DL candidates are selected and focused HPO completes, run final test evaluation once.
 
 Output examples:
 

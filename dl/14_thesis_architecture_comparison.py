@@ -309,6 +309,8 @@ def parse_args():
                         help="Retrain on train+val for test mode (fair protocol).")
     parser.add_argument("--tuned-params", type=str, default=None,
                         help="Path to JSON with tuned hyperparams for retrain mode.")
+    parser.add_argument("--architectures", nargs="+", default=None,
+                        help="Subset of architectures to run (e.g., AttentionTaskGatedFusionMLP).")
     return parser.parse_args()
 
 
@@ -344,7 +346,18 @@ def main():
     print(f"Per-modality scale: {scaler_dir is not None}")
     print(f"Checkpoint dir:     {args.checkpoint_dir}")
 
-    needs_feat_eng = any(a["feat_eng"] for a in ARCHITECTURES)
+    if args.architectures:
+        known = {a["name"] for a in ARCHITECTURES}
+        unknown = sorted(set(args.architectures) - known)
+        if unknown:
+            raise ValueError(f"Unknown architecture(s): {', '.join(unknown)}")
+        active_architectures = [a for a in ARCHITECTURES if a["name"] in set(args.architectures)]
+    else:
+        active_architectures = ARCHITECTURES
+
+    print(f"Architectures:       {', '.join(a['name'] for a in active_architectures)}")
+
+    needs_feat_eng = any(a["feat_eng"] for a in active_architectures)
 
     if args.eval_split == "val":
         results_dir = Path(args.results_root) / "thesis_val"
@@ -360,7 +373,7 @@ def main():
             )
 
         rows = []
-        for arch in ARCHITECTURES:
+        for arch in active_architectures:
             print("\n" + "=" * 70)
             print(f"ARCHITECTURE: {arch['name']}  (complexity={arch['complexity']})")
             print("=" * 70)
@@ -438,7 +451,7 @@ def main():
             weights = LOSS_WEIGHTS.to(device)
             rows = []
 
-            for arch in ARCHITECTURES:
+            for arch in active_architectures:
                 use_eng = arch["feat_eng"]
                 tr = train_val_eng_loader if use_eng else train_val_loader
                 tl = test_eng_loader if use_eng else test_loader
@@ -524,7 +537,7 @@ def main():
 
             weights = LOSS_WEIGHTS.to(device)
             rows = []
-            for arch in ARCHITECTURES:
+            for arch in active_architectures:
                 ckpt_path = checkpoint_dir / f"{arch['name']}_best.pt"
                 if not ckpt_path.exists():
                     print(f"\n  Warning: checkpoint not found for {arch['name']} — skipping.")
