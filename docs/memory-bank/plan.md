@@ -50,6 +50,8 @@ Corrected Ultimate XGBoost R2:
 4. Treat older `*_test` folders as potentially validation results unless the script loaded `X_test_*`.
 5. Build final thesis comparison table using only test results.
 
+Update: HPO, final test evaluation, and thesis DL comparison are complete. Publication-quality figures and thesis notebooks (10-15) are now complete.
+
 ---
 
 ## Thesis DL Comparison Plan
@@ -79,6 +81,8 @@ Outputs:
 Final test output after selection:
 
 - `results/dl_metrics/final_dl_test_<timestamp>.csv`
+
+Status: completed with `results/dl_metrics/final_dl_test_20260601_212018.csv` and tuned run `results/dl_metrics/final_dl_test_20260601_224941.csv`.
 
 ---
 

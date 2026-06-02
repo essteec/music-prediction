@@ -27,6 +27,12 @@
   - `results/hpo/catboost_best_params.json`
   - `results/hpo/catboost_hpo_val_<target>_<timestamp>.csv`
 
+## Thesis Notebook And Figure Artifacts
+
+- Thesis notebook suite: `notebooks/10_*` through `notebooks/15_*`
+- Thesis figure outputs: `results/figures/thesis/`
+- Implementation plan: `implementation_plan_3.md`
+
 ## Current Code Artifacts
 
 - ML all-feature baseline script: `ml/models/ultimate_models.py`

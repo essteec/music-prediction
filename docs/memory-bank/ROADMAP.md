@@ -114,6 +114,12 @@ Final thesis should include:
 3. Best ML vs best DL per target.
 4. Modality discussion: lyrics/text strongest for Valence, audio strongest for Energy/Danceability, Popularity remains metadata/external-factor dominated.
 
+### Stage 6: Thesis Notebooks And Figures (Complete)
+
+- Thesis notebook refresh implemented: `notebooks/10_*` through `notebooks/15_*`.
+- Publication-quality figures generated under `results/figures/thesis/`.
+- Reference plan: `implementation_plan_3.md`.
+
 ---
 
 ## Experiments To Deprioritize

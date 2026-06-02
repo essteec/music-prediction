@@ -2,10 +2,10 @@
 
 ## Current Status
 
-**Phase**: Final test evaluation COMPLETE  
-**Status**: All 4 final evaluation runs have finished. Results compiled into 4 thesis tables. The project is now in the thesis-writing phase.  
-**Current Goal**: Write the thesis comparison chapter using the final test tables.  
-**Next**: Update memory bank, then move to thesis writing / figure generation.
+**Phase**: Thesis writing and packaging  
+**Status**: Final test evaluation complete. Thesis notebook refresh (10-15) and publication-quality figures are complete.  
+**Current Goal**: Write the thesis comparison chapter using the final test tables and thesis figure set.  
+**Next**: Optional significance testing and final packaging steps.
 
 ---
 
@@ -83,9 +83,16 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 
 ---
 
+## Thesis Notebook Refresh (Complete)
+
+- Notebooks: `notebooks/10_*` through `notebooks/15_*`
+- Figures: `results/figures/thesis/`
+- Plan reference: `implementation_plan_3.md`
+
+---
+
 ## Immediate Next Actions
 
-1. **Write thesis comparison chapter** using the 4 tables in `final_test_results.md`.
-2. **Generate publication-quality figures**: bar charts, radar plots, architecture diagrams.
-3. **Update README.md** with final results.
-4. **Optional**: Statistical significance tests (paired bootstrap or Wilcoxon) on per-sample predictions to strengthen the "tie on Valence" claim.
+1. **Write thesis comparison chapter** using the final test tables and thesis figures.
+2. **Optional**: Statistical significance tests (paired bootstrap or Wilcoxon) on per-sample predictions to strengthen the "tie on Valence" claim.
+3. **Finalize packaging**: ensure README and thesis appendix references point to final tables and figures.
