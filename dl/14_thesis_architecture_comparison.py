@@ -504,6 +504,20 @@ def main():
                 _, test_metrics = evaluate(model, tl, criterion, device, weights)
                 print_metrics(test_metrics, f"Test — {arch['name']} (retrained)")
 
+                # Save the retrained model
+                ckpt_dir = Path(args.checkpoint_dir)
+                ckpt_dir.mkdir(parents=True, exist_ok=True)
+                retrained_ckpt_path = ckpt_dir / f"{arch['name']}_retrained.pt"
+                torch.save({
+                    "epoch": n_epochs,
+                    "model_state_dict": model.state_dict(),
+                    "test_metrics": test_metrics,
+                    "arch": arch["name"],
+                    "feat_eng": arch["feat_eng"],
+                    "args": vars(args),
+                }, retrained_ckpt_path)
+                print(f"  Retrained model saved to: {retrained_ckpt_path}")
+
                 test_avg_r2 = float(np.mean([m["r2"] for m in test_metrics.values()]))
                 notes = "feat_eng" if arch["feat_eng"] else ""
                 if apply_tuned_for_arch:
