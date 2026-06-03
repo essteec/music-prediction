@@ -8,6 +8,14 @@ import numpy as np
 from typing import Dict
 
 
+def _to_scalar(value) -> float:
+    """Coerce librosa/numpy scalar-or-array outputs to a plain float."""
+    arr = np.asarray(value)
+    if arr.size == 0:
+        return 0.0
+    return float(arr.reshape(-1)[0])
+
+
 def extract_audio_features(audio_path: str) -> Dict[str, float]:
     """
     Extract audio features from an audio file (MP3, WAV, etc.)
@@ -23,6 +31,7 @@ def extract_audio_features(audio_path: str) -> Dict[str, float]:
     
     # Tempo and beats
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+    tempo = _to_scalar(tempo)
     
     # Spectral features
     spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
@@ -64,12 +73,12 @@ def extract_audio_features(audio_path: str) -> Dict[str, float]:
         'energy': normalize_energy(energy),
         'instrumentalness': estimate_instrumentalness(y, sr),
         'liveness': estimate_liveness(spectral_bandwidth),
-        'loudness': loudness,
+        'loudness': float(loudness),
         'speechiness': normalize_speechiness(np.mean(zcr)),
-        'tempo': float(tempo),
+        'tempo': tempo,
         
         # Musical features
-        'duration_ms': duration_ms,
+        'duration_ms': float(duration_ms),
         'key': estimate_key(chroma),
         'mode': estimate_mode(chroma),
         'time_signature': estimate_time_signature(beats),
@@ -96,9 +105,11 @@ def estimate_acousticness(harmonic: np.ndarray, percussive: np.ndarray) -> float
 
 def estimate_danceability(tempo: float, beats: np.ndarray, y: np.ndarray, sr: int) -> float:
     """Estimate danceability from tempo and beat strength"""
+    tempo = _to_scalar(tempo)
+
     # Beat strength
     onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-    beat_strength = np.mean(onset_env)
+    beat_strength = _to_scalar(np.mean(onset_env))
     
     # Tempo score (optimal dance tempo around 120 BPM)
     tempo_score = 1.0 - abs(tempo - 120) / 120
@@ -107,8 +118,8 @@ def estimate_danceability(tempo: float, beats: np.ndarray, y: np.ndarray, sr: in
     # Regularity of beats
     if len(beats) > 1:
         beat_intervals = np.diff(beats)
-        beat_regularity = 1.0 - np.std(beat_intervals) / (np.mean(beat_intervals) + 1e-10)
-        beat_regularity = np.clip(beat_regularity, 0, 1)
+        beat_regularity = 1.0 - _to_scalar(np.std(beat_intervals)) / (_to_scalar(np.mean(beat_intervals)) + 1e-10)
+        beat_regularity = float(np.clip(beat_regularity, 0, 1))
     else:
         beat_regularity = 0.5
     
@@ -122,7 +133,7 @@ def estimate_danceability(tempo: float, beats: np.ndarray, y: np.ndarray, sr: in
 def normalize_energy(rms_energy: float) -> float:
     """Normalize RMS energy to 0-1 scale"""
     # Typical RMS range is 0.0 to 0.3
-    normalized = rms_energy / 0.3
+    normalized = _to_scalar(rms_energy) / 0.3
     return float(np.clip(normalized, 0, 1))
 
 
@@ -130,7 +141,7 @@ def estimate_instrumentalness(y: np.ndarray, sr: int) -> float:
     """Estimate instrumentalness (inverse of vocal presence)"""
     # Use spectral contrast as proxy for vocal presence
     contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
-    vocal_range_contrast = np.mean(contrast[2:5])  # Mid frequencies where vocals are
+    vocal_range_contrast = _to_scalar(np.mean(contrast[2:5]))  # Mid frequencies where vocals are
     
     # Higher contrast in vocal range = more vocals = less instrumental
     instrumentalness = 1.0 - min(vocal_range_contrast / 30, 1.0)
@@ -141,7 +152,7 @@ def estimate_instrumentalness(y: np.ndarray, sr: int) -> float:
 def estimate_liveness(bandwidth: np.ndarray) -> float:
     """Estimate liveness from spectral bandwidth variance"""
     # Live recordings have more variance in spectral characteristics
-    bandwidth_var = np.var(bandwidth)
+    bandwidth_var = _to_scalar(np.var(bandwidth))
     liveness = min(bandwidth_var / 1e6, 1.0)
     
     return float(np.clip(liveness, 0, 1))
@@ -150,7 +161,7 @@ def estimate_liveness(bandwidth: np.ndarray) -> float:
 def normalize_speechiness(zcr: float) -> float:
     """Normalize zero crossing rate to speechiness scale"""
     # Typical ZCR range is 0.0 to 0.3
-    speechiness = zcr / 0.3
+    speechiness = _to_scalar(zcr) / 0.3
     return float(np.clip(speechiness, 0, 1))
 
 
