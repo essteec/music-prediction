@@ -1,8 +1,7 @@
-# Music Attribute Prediction (Thesis)
+# Music Attribute Prediction
 
 This project predicts four music attributes from multimodal features:
-valence, energy, danceability, and popularity. It is a thesis-oriented
-codebase with final test evaluation completed in June 2026.
+valence, energy, danceability, and popularity.
 
 ## Status
 
@@ -35,14 +34,7 @@ Best DL: AttentionTaskGatedFusionMLP_tuned
 | Popularity | 0.1092 |
 | Average | 0.6264 |
 
-Key conclusion: CatBoost_tuned is strongest overall, winning 3/4 targets, with
-a near-tie on Valence.
-
-Primary result artifacts:
-- `results/metrics/thesis_ml_test/thesis_ml_results_test_20260528_230741.csv`
-- `results/metrics/thesis_ml_test/thesis_ml_results_test_20260601_160912.csv`
-- `results/dl_metrics/final_dl_test_20260601_212018.csv`
-- `results/dl_metrics/final_dl_test_20260601_224941.csv`
+Key conclusion: CatBoost_tuned is strongest overall.
 
 ## Feature Set (4,254 features)
 
@@ -59,9 +51,9 @@ Final multimodal representation used for ML and DL:
 
 Feature order is defined in `ml/models/thesis_ml_models.py`.
 
-## Thesis Notebook Suite (Complete)
+## Thesis Notebook Suite
 
-Thesis-focused notebooks (new, compact suite):
+Notebooks:
 
 - `notebooks/10_thesis_dataset_and_target_eda.ipynb`
 - `notebooks/11_thesis_multimodal_feature_inventory.ipynb`
@@ -69,10 +61,6 @@ Thesis-focused notebooks (new, compact suite):
 - `notebooks/13_thesis_architecture_and_hpo_analysis.ipynb`
 - `notebooks/14_thesis_modality_and_interpretability_analysis.ipynb`
 - `notebooks/15_thesis_error_analysis_and_significance.ipynb`
-
-Publication-quality figures are under `results/figures/thesis/`.
-
-Plan reference: `implementation_plan_3.md`.
 
 ## Methodology Notes
 
@@ -93,9 +81,3 @@ Plan reference: `implementation_plan_3.md`.
 - `results/metrics/` and `results/dl_metrics/` contain final CSV results
 - `models/checkpoints/` contains DL checkpoints
 - `results/hpo/` contains tuned parameter JSONs
-
-## Next Steps
-
-1. Write the thesis comparison chapter using final test tables and figures.
-2. Optional: run statistical significance tests on per-sample predictions.
-3. Final packaging: ensure README and thesis appendix reference final tables.
