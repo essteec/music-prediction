@@ -2,6 +2,7 @@
 
 This project predicts four music attributes from multimodal features:
 valence, energy, danceability, and popularity.
+Download [Kaggle dataset](https://www.kaggle.com/datasets/serkantysz/490k-spotify-song-audio-embeddings-and-metadata/data) and put under 'data/processed/'.
 
 ## Status
 
