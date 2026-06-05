@@ -29,7 +29,7 @@
 
 ## Thesis Notebook And Figure Artifacts
 
-- Thesis notebook suite: `notebooks/10_*` through `notebooks/15_*`
+- Comprehensive thesis notebook suite: `notebooks/20_*` through `notebooks/27_*` (supersedes the earlier 10-15 concise suite)
 - Thesis figure outputs: `results/figures/thesis/`
 - Implementation plan: `implementation_plan_3.md`
 

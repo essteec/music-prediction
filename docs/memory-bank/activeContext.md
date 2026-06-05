@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase**: Thesis writing and packaging  
-**Status**: Final test evaluation complete. Thesis notebook refresh (10-15) and publication-quality figures are complete.  
+**Status**: Final test evaluation complete. Comprehensive thesis notebook suite (20-27) and publication-quality figures are complete.  
 **Current Goal**: Write the thesis comparison chapter using the final test tables and thesis figure set.  
 **Next**: Optional significance testing and final packaging steps.
 
@@ -83,11 +83,11 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 
 ---
 
-## Thesis Notebook Refresh (Complete)
+## Comprehensive Thesis Notebook Suite (Complete)
 
-- Notebooks: `notebooks/10_*` through `notebooks/15_*`
+- Notebooks: `notebooks/20_*` through `notebooks/27_*`
 - Figures: `results/figures/thesis/`
-- Plan reference: `implementation_plan_3.md`
+- Plan reference: `implementation_plan_3a.md`
 
 ---
 

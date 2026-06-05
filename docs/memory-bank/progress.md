@@ -174,11 +174,11 @@ Bug fix applied: `thesis_ml_models.py` — disabled `use_best_model` and removed
 - `dl/utils/thesis_models.py`: centralized source of truth for thesis DL architectures. Provides `FlatAllMLP`, re-exports `MultiModalFusionMLP`, `TaskGatedFusionMLP`, `AttentionTaskGatedFusionMLP`, and the `engineer_metadata()` helper for the feat eng variant.
 - `dl/14_thesis_architecture_comparison.py`: clean DL comparison pipeline. Supports `--eval-split val` (train + select by val R²) and `--eval-split test --retrain` (retrain on train+val + evaluate on test). Supports `--tuned-params` for architecture-specific HPO params. Runs 5 architectures with consistent hyperparams.
 
-### Thesis Notebook Refresh And Figures (Complete)
+### Comprehensive Thesis Notebook Suite (Complete)
 
-- New thesis notebooks created and executed: `notebooks/10_*` through `notebooks/15_*`.
+- New comprehensive notebooks created and executed: `notebooks/20_*` through `notebooks/27_*` (8 notebooks, 117 total cells, all models/targets/modalities analyzed).
 - Publication-quality figures generated under `results/figures/thesis/`.
-- Plan reference: `implementation_plan_3.md`.
+- Plan reference: `implementation_plan_3a.md`. The earlier 10-15 concise suite is superseded for exploratory depth; 20-27 notebooks match the original 01-07 style with ~30 rich cells each.
 
 ---
 

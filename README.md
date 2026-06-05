@@ -52,16 +52,20 @@ Final multimodal representation used for ML and DL:
 
 Feature order is defined in `ml/models/thesis_ml_models.py`.
 
-## Thesis Notebook Suite
+## Comprehensive Thesis Notebook Suite (20_* Series)
 
-Notebooks:
+Deep exploratory notebooks analyzing all 8 ML families, 5 DL architectures, 4 targets, and 8 modalities — not just the two tuned finalists:
 
-- `notebooks/10_thesis_dataset_and_target_eda.ipynb`
-- `notebooks/11_thesis_multimodal_feature_inventory.ipynb`
-- `notebooks/12_thesis_final_ml_vs_dl_comparison.ipynb`
-- `notebooks/13_thesis_architecture_and_hpo_analysis.ipynb`
-- `notebooks/14_thesis_modality_and_interpretability_analysis.ipynb`
-- `notebooks/15_thesis_error_analysis_and_significance.ipynb`
+- `notebooks/20_thesis_comprehensive_dataset_eda.ipynb`
+- `notebooks/21_thesis_comprehensive_feature_inventory.ipynb`
+- `notebooks/22_thesis_comprehensive_ml_baselines.ipynb`
+- `notebooks/23_thesis_comprehensive_dl_architecture.ipynb`
+- `notebooks/24_thesis_comprehensive_hpo_analysis.ipynb`
+- `notebooks/25_thesis_comprehensive_feature_modality_importance.ipynb`
+- `notebooks/26_thesis_comprehensive_error_analysis.ipynb`
+- `notebooks/27_thesis_comprehensive_final_comparison.ipynb`
+
+A concise thesis narrative suite (`10_*` through `15_*`) also exists but is superseded by the 20_* series for exploratory depth.
 
 ## Methodology Notes
 

@@ -13,7 +13,7 @@ A thesis-oriented codebase for predicting four music attributes from multimodal 
 
 Convert the recent ML and DL experiments into clean, comparable, thesis-ready results. The priority is methodology quality and interpretability, not more unchecked experiment growth.
 
-Update: Thesis notebooks and publication-quality figures are complete (see `notebooks/10_*` through `notebooks/15_*` and `results/figures/thesis/`).
+Update: Comprehensive thesis notebooks and publication-quality figures are complete (see `notebooks/20_*` through `notebooks/27_*` and `results/figures/thesis/`).
 
 ## Baseline Reality
 
