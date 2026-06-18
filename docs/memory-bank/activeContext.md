@@ -2,10 +2,10 @@
 
 ## Current Status
 
-**Phase**: Thesis writing and packaging  
-**Status**: Final test evaluation complete. Comprehensive thesis notebook suite (20-27) and publication-quality figures are complete.  
-**Current Goal**: Write the thesis comparison chapter using the final test tables and thesis figure set.  
-**Next**: Optional significance testing and final packaging steps.
+**Phase**: Live app preprocessing standardization and debug  
+**Status**: Final test evaluation is complete. Gradio app now serves the tuned CatBoost and tuned AttentionDL models on the 4,254-feature input space.  
+**Current Goal**: Ensure app preprocessing (both base metadata and audio embedding extraction) matches training preprocessing exactly, so live predictions are valid.  
+**Next**: Verify popularity output normalization (log1p revert via expm1) with debug logging.
 
 ---
 
@@ -36,7 +36,7 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 ### Head-to-Head
 
 | Target | CatBoost_tuned | AttentionDL_tuned | Winner | Margin |
-|---|---:|---:|---|---:|
+|---|---:|---:|---:|---|---:|
 | Valence | 0.7220 | 0.7214 | Tie | +0.001 |
 | Energy | **0.9212** | 0.9050 | CatBoost | +0.016 |
 | Danceability | **0.7903** | 0.7700 | CatBoost | +0.020 |
@@ -51,7 +51,7 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 
 ---
 
-## Key Thesis Conclusions From Test Results
+## Key Conclusions From Test Results
 
 1. CatBoost is the strongest model overall (avg R² 0.641), winning 3/4 targets.
 2. DL ties CatBoost only on Valence (0.722 vs 0.721), suggesting cross-modal attention helps emotion prediction.
@@ -65,13 +65,13 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 
 1. Validation split used for model/architecture selection (completed earlier).
 2. HPO conducted on validation only: CatBoost (12 trials/target), AttentionDL (20 trials).
-3. Test split used exactly once for final thesis reporting.
+3. Test split used exactly once for final reporting.
 4. ML trained on train+val, DL retrained on train+val for fixed budgets.
 5. All results include R², RMSE, MAE per target.
 
 ---
 
-## Preferred Thesis DL Architecture Set
+## Preferred DL Architecture Set
 
 5 architectures in `dl/14_thesis_architecture_comparison.py`:
 
@@ -83,16 +83,45 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 
 ---
 
-## Comprehensive Thesis Notebook Suite (Complete)
+## Comprehensive Notebook Suite (Complete)
 
 - Notebooks: `notebooks/20_*` through `notebooks/27_*`
 - Figures: `results/figures/thesis/`
-- Plan reference: `implementation_plan_3a.md`
+
+---
+
+## Recent App Preprocessing Standardization
+
+Changes applied (June 2026) to `app/` only (no training pipeline modifications):
+
+### Base Metadata
+- Removed target fields (energy, danceability, valence) from automatic heuristic extractor — they are model outputs, not inputs.
+- Added explicit required-field validation for automatic mode.
+- UI now shows `Base Metadata Source` with two honest options: `Manual Spotify-like metadata` vs `Estimated from uploaded audio`.
+- Added reliability warning when heuristic mode is active.
+
+### Feature Contract Validation
+- Added shape/dimension/NaN checks on every feature block before model prediction.
+- Validates total concatenated width (4254) for ML and per-block widths for DL.
+
+### YouTube Downloads
+- Now uses training-time yt-dlp setting: format `251/bestaudio`, saves as Opus/WebM, no WAV re-encode.
+- Eliminates FFmpegExtractAudio postprocessor mismatch.
+
+### Uploaded Audio
+- Converted to standardized Opus/WebM via FFmpeg before embedding extraction.
+
+### Mel Stats Sample Rate
+- Fixed: changed from `sr=16000` (app default) to `sr=22050` (training default) with explicit `n_fft=2048`, `hop_length=512` matching `scripts/audio-embedding-extraction/extract_mel_stats.py`.
+
+### Preprocessing Parity Checker
+- `validate_preprocessing_against_saved()` extended to check multiple rows against saved training feature arrays with configurable tolerance.
 
 ---
 
 ## Immediate Next Actions
 
-1. **Write thesis comparison chapter** using the final test tables and thesis figures.
-2. **Optional**: Statistical significance tests (paired bootstrap or Wilcoxon) on per-sample predictions to strengthen the "tie on Valence" claim.
-3. **Finalize packaging**: ensure README and thesis appendix references point to final tables and figures.
+1. **Verify popularity normalization**: debug log raw (pre-expm1) model outputs to confirm log1p revert is working as expected.
+2. **Optional**: Install `soundfile` to eliminate librosa PySoundFile warnings.
+3. **Optional**: Statistical significance tests (paired bootstrap or Wilcoxon) on per-sample predictions to strengthen the "tie on Valence" claim.
+4. **Keep app in sync**: any future training pipeline changes to extraction/preprocessing must be mirrored in the app.

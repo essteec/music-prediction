@@ -7,8 +7,8 @@ Download [Kaggle dataset](https://www.kaggle.com/datasets/serkantysz/490k-spotif
 ## Status
 
 - Final test evaluation complete (train+val retrain, single test run)
-- Thesis notebooks and publication-quality figures complete
-- Current focus: thesis writing and packaging
+- Notebooks and publication-quality figures complete
+- Current focus: Reporting and packaging
 
 ## Final Test Results (June 2026)
 
@@ -52,7 +52,7 @@ Final multimodal representation used for ML and DL:
 
 Feature order is defined in `ml/models/thesis_ml_models.py`.
 
-## Comprehensive Thesis Notebook Suite (20_* Series)
+## Comprehensive Report Notebook Suite (20_* Series)
 
 Deep exploratory notebooks analyzing all 8 ML families, 5 DL architectures, 4 targets, and 8 modalities — not just the two tuned finalists:
 
@@ -65,7 +65,7 @@ Deep exploratory notebooks analyzing all 8 ML families, 5 DL architectures, 4 ta
 - `notebooks/26_thesis_comprehensive_error_analysis.ipynb`
 - `notebooks/27_thesis_comprehensive_final_comparison.ipynb`
 
-A concise thesis narrative suite (`10_*` through `15_*`) also exists but is superseded by the 20_* series for exploratory depth.
+A concise report narrative suite (`10_*` through `15_*`) also exists but is superseded by the 20_* series for exploratory depth.
 
 ## Methodology Notes
 

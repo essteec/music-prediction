@@ -1,10 +1,8 @@
-# Plan: Thesis-Ready Result Consolidation
+# Plan: Result Consolidation and Verification
 
 ## Goal
 
-Create a clean, reproducible comparison between corrected Ultimate ML results and a compact set of DL architectures for thesis reporting.
-
-The old goal of only aligning Kaggle artifacts is complete. The current priority is methodology clarity: validation for selection, test for final reporting, and no confusing result naming.
+Create a clean, reproducible comparison between corrected ML results and DL architectures. The current priority is methodology clarity: validation for selection, test for final reporting, and no confusing result naming.
 
 ---
 
@@ -40,56 +38,19 @@ Corrected Ultimate XGBoost R2:
 
 ---
 
-## Remaining Methodology Work
+## Completed Methodology Work
 
-1. Complete focused HPO runs and record best params JSONs in `results/hpo/`:
-   - `dl/15_hpo_attention_dl.py`
-   - `ml/models/hpo_catboost.py`
-2. After HPO, retrain on `train+val` with tuned settings and evaluate once on `test`.
-3. Keep outputs split-explicit: `*_val_*.csv` vs `*_test_*.csv`.
-4. Treat older `*_test` folders as potentially validation results unless the script loaded `X_test_*`.
-5. Build final thesis comparison table using only test results.
-
-Update: HPO, final test evaluation, and thesis DL comparison are complete. Publication-quality figures and comprehensive thesis notebooks (20-27) are now complete.
+1. HPO runs completed, best params saved to `results/hpo/`.
+2. Final test evaluation completed: CatBoost (tuned) and AttentionDL (tuned) on train+val, evaluated once on test.
+3. Outputs are split-explicit (`*_val_*.csv` vs `*_test_*.csv`).
+4. Results use only test numbers for final comparison.
 
 ---
 
-## Thesis DL Comparison Plan
+## Verification Checks
 
-Create one comparison script analogous to `ml/models/enhanced_models.py`, but much smaller and cleaner.
-
-Recommended script:
-
-`dl/14_thesis_architecture_comparison.py`
-
-Architectures:
-
-1. `FlatAllMLP`
-2. `MultiModalFusionMLP`
-3. `TaskGatedFusionMLP`
-4. `AttentionTaskGatedFusionMLP`
-
-Optional only if needed:
-
-5. `WideTaskGatedFusionMLP`
-
-Outputs:
-
-- `results/dl_metrics/thesis_architecture_comparison_val_<timestamp>.csv`
-- `models/checkpoints/thesis_<architecture>_best.pt`
-
-Final test output after selection:
-
-- `results/dl_metrics/final_dl_test_<timestamp>.csv`
-
-Status: completed with `results/dl_metrics/final_dl_test_20260601_212018.csv` and tuned run `results/dl_metrics/final_dl_test_20260601_224941.csv`.
-
----
-
-## Verification Plan
-
-1. Confirm every result row includes `split`.
-2. Confirm validation and test files are separate.
-3. Confirm all models use the same train/val/test data artifacts.
-4. Confirm per-target R2/RMSE/MAE are reported.
-5. Confirm final thesis table compares selected models only, not every exploratory A-H run.
+1. Every result row includes `split`.
+2. Validation and test files are separate.
+3. All models use the same train/val/test data artifacts.
+4. Per-target R2/RMSE/MAE are reported.
+5. Final comparison uses selected models only, not every exploratory A-H run.

@@ -1,6 +1,8 @@
 """
 Audio Feature Extraction Module
-Extracts Spotify-like features from audio files using librosa
+
+Estimates the Spotify-like metadata fields used as model inputs from an audio
+file. These are waveform heuristics, not Spotify API values.
 """
 
 import librosa
@@ -18,38 +20,33 @@ def _to_scalar(value) -> float:
 
 def extract_audio_features(audio_path: str) -> Dict[str, float]:
     """
-    Extract audio features from an audio file (MP3, WAV, etc.)
+    Estimate base metadata features from an audio file (MP3, WAV, etc.).
+
+    This intentionally returns only fields that are valid model inputs. Target
+    variables such as valence, energy, and danceability are predicted by the
+    trained models and must not be injected as input features.
     
     Args:
         audio_path: Path to audio file
         
     Returns:
-        Dictionary with extracted features matching Spotify API format
+        Dictionary with Spotify-like metadata fields required by the app
     """
     # Load audio file
     y, sr = librosa.load(audio_path, duration=30)  # Analyze first 30 seconds
     
     # Tempo and beats
-    tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+    tempo, _beats = librosa.beat.beat_track(y=y, sr=sr)
     tempo = _to_scalar(tempo)
     
-    # Spectral features
-    spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
-    spectral_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)[0]
+    # Spectral features used by the heuristic estimators
     spectral_bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)[0]
-    
-    # RMS Energy
-    rms = librosa.feature.rms(y=y)[0]
-    energy = np.mean(rms)
     
     # Zero Crossing Rate (proxy for speechiness)
     zcr = librosa.feature.zero_crossing_rate(y)[0]
     
     # Chroma features (for key detection)
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    
-    # MFCC (timbre)
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
     
     # Harmonic and percussive components
     y_harmonic, y_percussive = librosa.effects.hpss(y)
@@ -65,26 +62,17 @@ def extract_audio_features(audio_path: str) -> Dict[str, float]:
     # Loudness (approximate in dB)
     loudness = 20 * np.log10(np.mean(np.abs(y)) + 1e-10)
     
-    # Normalize features to match Spotify's 0-1 scale
+    # Estimate only the base metadata inputs expected by the trained models.
     features = {
-        # Core audio features
         'acousticness': estimate_acousticness(y_harmonic, y_percussive),
-        'danceability': estimate_danceability(tempo, beats, y, sr),
-        'energy': normalize_energy(energy),
         'instrumentalness': estimate_instrumentalness(y, sr),
         'liveness': estimate_liveness(spectral_bandwidth),
         'loudness': float(loudness),
         'speechiness': normalize_speechiness(np.mean(zcr)),
         'tempo': tempo,
-        
-        # Musical features
         'duration_ms': float(duration_ms),
         'key': estimate_key(chroma),
         'mode': estimate_mode(chroma),
-        'time_signature': estimate_time_signature(beats),
-        
-        # Metadata (will be provided by user)
-        'valence': 0.5,  # Placeholder - this is what we're predicting!
     }
     
     return features
@@ -101,40 +89,6 @@ def estimate_acousticness(harmonic: np.ndarray, percussive: np.ndarray) -> float
     
     acousticness = harmonic_energy / total_energy
     return float(np.clip(acousticness, 0, 1))
-
-
-def estimate_danceability(tempo: float, beats: np.ndarray, y: np.ndarray, sr: int) -> float:
-    """Estimate danceability from tempo and beat strength"""
-    tempo = _to_scalar(tempo)
-
-    # Beat strength
-    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-    beat_strength = _to_scalar(np.mean(onset_env))
-    
-    # Tempo score (optimal dance tempo around 120 BPM)
-    tempo_score = 1.0 - abs(tempo - 120) / 120
-    tempo_score = max(0, tempo_score)
-    
-    # Regularity of beats
-    if len(beats) > 1:
-        beat_intervals = np.diff(beats)
-        beat_regularity = 1.0 - _to_scalar(np.std(beat_intervals)) / (_to_scalar(np.mean(beat_intervals)) + 1e-10)
-        beat_regularity = float(np.clip(beat_regularity, 0, 1))
-    else:
-        beat_regularity = 0.5
-    
-    # Combine factors
-    danceability = (tempo_score * 0.4 + beat_regularity * 0.3 + 
-                   min(beat_strength / 10, 1.0) * 0.3)
-    
-    return float(np.clip(danceability, 0, 1))
-
-
-def normalize_energy(rms_energy: float) -> float:
-    """Normalize RMS energy to 0-1 scale"""
-    # Typical RMS range is 0.0 to 0.3
-    normalized = _to_scalar(rms_energy) / 0.3
-    return float(np.clip(normalized, 0, 1))
 
 
 def estimate_instrumentalness(y: np.ndarray, sr: int) -> float:
@@ -193,36 +147,23 @@ def estimate_mode(chroma: np.ndarray) -> int:
     return mode
 
 
-def estimate_time_signature(beats: np.ndarray) -> int:
-    """Estimate time signature from beat intervals"""
-    if len(beats) < 4:
-        return 4  # Default to 4/4
-    
-    # Most common music is 4/4 or 3/4
-    # This is a simplified estimation
-    return 4  # Default to 4/4 for simplicity
-
-
 def print_feature_summary(features: Dict[str, float]):
     """Print extracted features in a readable format"""
     print("\n" + "="*50)
     print("EXTRACTED AUDIO FEATURES")
     print("="*50)
     
-    print("\n📊 Core Audio Features:")
-    print(f"  Energy:           {features['energy']:.3f}")
-    print(f"  Danceability:     {features['danceability']:.3f}")
+    print("\nCore Metadata Inputs:")
     print(f"  Acousticness:     {features['acousticness']:.3f}")
     print(f"  Instrumentalness: {features['instrumentalness']:.3f}")
     print(f"  Liveness:         {features['liveness']:.3f}")
     print(f"  Speechiness:      {features['speechiness']:.3f}")
     print(f"  Loudness:         {features['loudness']:.2f} dB")
     
-    print("\n🎵 Musical Features:")
+    print("\nMusical Metadata:")
     print(f"  Tempo:            {features['tempo']:.1f} BPM")
     print(f"  Key:              {features['key']} ({['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][features['key']]})")
     print(f"  Mode:             {'Major' if features['mode'] == 1 else 'Minor'}")
-    print(f"  Time Signature:   {features['time_signature']}/4")
     print(f"  Duration:         {features['duration_ms']/1000:.1f} seconds")
     
     print("="*50 + "\n")

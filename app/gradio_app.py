@@ -8,6 +8,7 @@ AttentionTaskGatedFusionMLP checkpoint on the 4,254-feature thesis input space.
 from __future__ import annotations
 
 import importlib
+import hashlib
 import os
 import pickle
 import shutil
@@ -31,10 +32,17 @@ SCALER_DIR = FEATURES_DIR / "scalers"
 ML_MODELS_DIR = BASE_DIR / "ml" / "models" / "saved" / "thesis_ml_test"
 DL_CHECKPOINT_PATH = BASE_DIR / "models" / "checkpoints" / "thesis_final_tuned" / "AttentionTaskGatedFusionMLP_retrained.pt"
 DOWNLOAD_DIR = BASE_DIR / "app" / "downloads"
+STANDARD_AUDIO_CODEC = "opus/webm"
 
 TARGETS = ["valence", "energy", "danceability", "popularity"]
 KEY_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 GENRES = ["Blues", "Classical", "Country", "Electronic", "Folk", "Hip-Hop", "Jazz", "Pop", "R&B", "Rock"]
+BASE_AUDIO_AUTO = "Estimated from uploaded audio"
+BASE_AUDIO_MANUAL = "Manual Spotify-like metadata"
+AUTO_METADATA_WARNING = (
+    "Base metadata was estimated from waveform heuristics, not Spotify API values. "
+    "Predictions are most comparable to training when manual Spotify-like metadata is available."
+)
 AUDIO_SKEWED_COLUMNS = ["acousticness", "instrumentalness", "speechiness"]
 AUDIO_SCALER_COLUMNS = ["loudness", "tempo", "duration_ms", "year"]
 TEXT_STAT_COLUMNS = ["word_count", "unique_word_count", "unique_ratio", "avg_word_length", "char_count"]
@@ -47,6 +55,7 @@ FEATURE_PARTS = [
     ("panns", 2048),
     ("mel_stats", 512),
 ]
+N_FEATURES = sum(dim for _name, dim in FEATURE_PARTS)
 
 
 sys.path.insert(0, str(BASE_DIR))
@@ -144,9 +153,45 @@ def load_dl_model():
     return model, torch, device
 
 
+def _normalize_to_webm(source_path: str | Path, output_dir: Path) -> Path:
+    """Re-encode any audio to Opus/WebM using FFmpeg.
+
+    This mirrors the training pipeline, where all audio was stored as
+    Opus/WebM (format 251 from yt-dlp).
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        raise RuntimeError("FFmpeg is required to standardize uploaded audio.")
+
+    source_path = Path(source_path)
+    stem = f"upload_{hashlib.sha256(source_path.name.encode()).hexdigest()[:12]}"
+    output_path = output_dir / f"{stem}_opus.webm"
+
+    if output_path.exists():
+        return output_path
+
+    subprocess.run(
+        [
+            ffmpeg,
+            "-i", str(source_path),
+            "-vn",
+            "-acodec", "libopus",
+            "-b:a", "96k",
+            "-y",
+            str(output_path),
+        ],
+        capture_output=True,
+        check=True,
+    )
+    return output_path
+
+
 def resolve_audio_source(uploaded_audio: str | None, youtube_url: str | None) -> tuple[str, str]:
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
     if uploaded_audio:
-        return uploaded_audio, "Uploaded audio"
+        audio_path = _normalize_to_webm(uploaded_audio, DOWNLOAD_DIR)
+        return str(audio_path), "Uploaded audio"
 
     if not youtube_url or not youtube_url.strip():
         raise ValueError("Provide either an audio file or a YouTube URL.")
@@ -160,26 +205,23 @@ def resolve_audio_source(uploaded_audio: str | None, youtube_url: str | None) ->
         subprocess.check_call([pip, "install", "yt-dlp"])
         yt_dlp = _optional_import("yt_dlp")
 
-    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    output_template = str(DOWNLOAD_DIR / "%(id)s.%(ext)s")
-    options = {
-        "format": "bestaudio/best",
+    output_template = str(DOWNLOAD_DIR / "%(id)s_%(title)s_opus.%(ext)s")
+    opts: dict[str, Any] = {
+        "format": "251/bestaudio",
         "outtmpl": output_template,
         "noplaylist": True,
         "quiet": True,
-        "postprocessors": [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": "wav",
-            "preferredquality": "192",
-        }],
+        "no_warnings": True,
+        "noprogress": True,
+        "ignoreerrors": False,
     }
-    with yt_dlp.YoutubeDL(options) as downloader:
+    with yt_dlp.YoutubeDL(opts) as downloader:
         info = downloader.extract_info(youtube_url.strip(), download=True)
         source = f"YouTube: {info.get('title', youtube_url.strip())}"
-        audio_path = Path(downloader.prepare_filename(info)).with_suffix(".wav")
+        audio_path = Path(downloader.prepare_filename(info)).with_suffix(".webm")
 
     if not audio_path.exists():
-        matches = sorted(DOWNLOAD_DIR.glob(f"{info['id']}.*"))
+        matches = sorted(DOWNLOAD_DIR.glob(f"{info['id']}_*_opus.webm"))
         if not matches:
             raise FileNotFoundError("yt-dlp finished but no downloaded audio file was found.")
         audio_path = matches[0]
@@ -231,14 +273,29 @@ def build_base_audio_features(
     artist_popularity: int,
     resources: dict[str, Any],
 ) -> tuple[np.ndarray, dict[str, float], str]:
-    if base_audio_mode == "Manual":
+    if base_audio_mode == BASE_AUDIO_MANUAL:
         raw = dict(manual)
-        source = "manual"
-    elif extracted is not None:
+        source = "manual Spotify-like metadata"
+    elif base_audio_mode == BASE_AUDIO_AUTO and extracted is not None:
         raw = dict(extracted)
-        source = "automatic"
+        source = "estimated from uploaded audio"
     else:
-        raise ValueError("Automatic base audio features require an uploaded or downloaded audio file.")
+        raise ValueError("Estimated base metadata requires an uploaded or downloaded audio file.")
+
+    required_raw = [
+        "acousticness",
+        "instrumentalness",
+        "speechiness",
+        "liveness",
+        "loudness",
+        "tempo",
+        "duration_ms",
+        "key",
+        "mode",
+    ]
+    missing = [name for name in required_raw if name not in raw]
+    if missing:
+        raise ValueError(f"Base metadata is missing required fields: {', '.join(missing)}")
 
     skewed = pd.DataFrame(
         [[raw["acousticness"], raw["instrumentalness"], raw["speechiness"]]],
@@ -296,44 +353,82 @@ def build_base_audio_features_from_training_row(row: pd.Series, resources: dict[
     return np.hstack([power, normalized, scaled, mode, key_block, genre_block, artist_block]).astype(np.float32)
 
 
-def validate_preprocessing_against_saved(split: str = "train", row_index: int = 0) -> dict[str, float]:
+def validate_preprocessing_against_saved(
+    split: str = "train",
+    row_indices: int | list[int] | None = None,
+    tolerance: float = 1e-6,
+) -> dict[str, Any]:
+    """Compare app preprocessing against saved training feature arrays.
+
+    This validates deterministic preprocessing only: base metadata, text stats,
+    and sentiment. It intentionally does not validate uploaded-audio heuristic
+    metadata, because training used Spotify-like metadata columns from CSV.
+    """
     resources = load_resources()
-    row = pd.read_csv(BASE_DIR / "data" / "processed" / f"{split}.csv").iloc[row_index]
-    lyrics = str(row.get("lyrics", ""))
-    text = lyrics.strip() if lyrics and lyrics.strip() else ""
-    words = text.split()
-    unique = {word.lower() for word in words}
-    text_stats_raw = pd.DataFrame([{
-        "word_count": np.log1p(len(words)),
-        "unique_word_count": np.log1p(len(unique)),
-        "unique_ratio": len(unique) / max(len(words), 1),
-        "avg_word_length": float(np.mean([len(word) for word in words])) if words else 0.0,
-        "char_count": np.log1p(len(text)),
-    }], columns=TEXT_STAT_COLUMNS)
-    text_stats = resources["text_stats_scaler"].transform(text_stats_raw).astype(np.float32)
+    indices = [0] if row_indices is None else ([row_indices] if isinstance(row_indices, int) else list(row_indices))
+    frame = pd.read_csv(BASE_DIR / "data" / "processed" / f"{split}.csv")
+    expected_audio = np.load(FEATURES_DIR / f"X_{split}_audio.npy", mmap_mode="r")
+    expected_text = np.load(FEATURES_DIR / f"X_{split}_text_stats.npy", mmap_mode="r")
+    expected_sentiment = np.load(FEATURES_DIR / f"X_{split}_sentiment.npy", mmap_mode="r")
 
-    try:
-        blob = TextBlob(text)
-        polarity = blob.sentiment.polarity
-        subjectivity = blob.sentiment.subjectivity
-    except Exception:
-        polarity = 0.0
-        subjectivity = 0.0
-    sentiment_raw = pd.DataFrame([{
-        "sentiment_polarity": polarity,
-        "sentiment_subjectivity": subjectivity,
-    }], columns=SENTIMENT_COLUMNS)
-    sentiment = resources["sentiment_scaler"].transform(sentiment_raw).astype(np.float32)
-    audio = build_base_audio_features_from_training_row(row, resources)
+    rows = []
+    max_audio = 0.0
+    max_text = 0.0
+    max_sentiment = 0.0
 
-    expected_audio = np.load(FEATURES_DIR / f"X_{split}_audio.npy", mmap_mode="r")[row_index].astype(np.float32)
-    expected_text = np.load(FEATURES_DIR / f"X_{split}_text_stats.npy", mmap_mode="r")[row_index].astype(np.float32)
-    expected_sentiment = np.load(FEATURES_DIR / f"X_{split}_sentiment.npy", mmap_mode="r")[row_index].astype(np.float32)
+    for row_index in indices:
+        row = frame.iloc[row_index]
+        lyrics = str(row.get("lyrics", ""))
+        text = lyrics.strip() if lyrics and lyrics.strip() else ""
+        words = text.split()
+        unique = {word.lower() for word in words}
+        text_stats_raw = pd.DataFrame([{
+            "word_count": np.log1p(len(words)),
+            "unique_word_count": np.log1p(len(unique)),
+            "unique_ratio": len(unique) / max(len(words), 1),
+            "avg_word_length": float(np.mean([len(word) for word in words])) if words else 0.0,
+            "char_count": np.log1p(len(text)),
+        }], columns=TEXT_STAT_COLUMNS)
+        text_stats = resources["text_stats_scaler"].transform(text_stats_raw).astype(np.float32)
+
+        try:
+            blob = TextBlob(text)
+            polarity = blob.sentiment.polarity
+            subjectivity = blob.sentiment.subjectivity
+        except Exception:
+            polarity = 0.0
+            subjectivity = 0.0
+        sentiment_raw = pd.DataFrame([{
+            "sentiment_polarity": polarity,
+            "sentiment_subjectivity": subjectivity,
+        }], columns=SENTIMENT_COLUMNS)
+        sentiment = resources["sentiment_scaler"].transform(sentiment_raw).astype(np.float32)
+        audio = build_base_audio_features_from_training_row(row, resources)
+
+        audio_diff = float(np.max(np.abs(audio[0] - expected_audio[row_index].astype(np.float32))))
+        text_diff = float(np.max(np.abs(text_stats[0] - expected_text[row_index].astype(np.float32))))
+        sentiment_diff = float(np.max(np.abs(sentiment[0] - expected_sentiment[row_index].astype(np.float32))))
+
+        max_audio = max(max_audio, audio_diff)
+        max_text = max(max_text, text_diff)
+        max_sentiment = max(max_sentiment, sentiment_diff)
+        rows.append({
+            "row_index": int(row_index),
+            "audio_max_abs_diff": audio_diff,
+            "text_stats_max_abs_diff": text_diff,
+            "sentiment_max_abs_diff": sentiment_diff,
+            "passed": audio_diff <= tolerance and text_diff <= tolerance and sentiment_diff <= tolerance,
+        })
 
     return {
-        "audio_max_abs_diff": float(np.max(np.abs(audio[0] - expected_audio))),
-        "text_stats_max_abs_diff": float(np.max(np.abs(text_stats[0] - expected_text))),
-        "sentiment_max_abs_diff": float(np.max(np.abs(sentiment[0] - expected_sentiment))),
+        "split": split,
+        "tolerance": tolerance,
+        "row_count": len(rows),
+        "audio_max_abs_diff": max_audio,
+        "text_stats_max_abs_diff": max_text,
+        "sentiment_max_abs_diff": max_sentiment,
+        "passed": max_audio <= tolerance and max_text <= tolerance and max_sentiment <= tolerance,
+        "rows": rows,
     }
 
 
@@ -345,16 +440,43 @@ def _scale_embedding(name: str, arr: np.ndarray, resources: dict[str, Any]) -> n
     return scaled
 
 
+def _validate_feature_array(name: str, arr: np.ndarray, expected_dim: int, label: str) -> None:
+    if not isinstance(arr, np.ndarray):
+        raise ValueError(f"{label} feature block '{name}' must be a numpy array, got {type(arr).__name__}")
+    if arr.ndim != 2:
+        raise ValueError(f"{label} feature block '{name}' must be 2D, got shape {arr.shape}")
+    if arr.shape[0] != 1:
+        raise ValueError(f"{label} feature block '{name}' must contain one row, got shape {arr.shape}")
+    if arr.shape[1] != expected_dim:
+        raise ValueError(
+            f"{label} feature block '{name}' has wrong width: got {arr.shape[1]}, expected {expected_dim}"
+        )
+    if not np.isfinite(arr).all():
+        raise ValueError(f"{label} feature block '{name}' contains NaN or inf values")
+
+
+def validate_feature_blocks(blocks: dict[str, np.ndarray], label: str) -> None:
+    missing = [name for name, _dim in FEATURE_PARTS if name not in blocks]
+    if missing:
+        raise ValueError(f"{label} feature blocks missing required inputs: {', '.join(missing)}")
+    for name, expected_dim in FEATURE_PARTS:
+        _validate_feature_array(name, blocks[name], expected_dim, label)
+
+
+def validate_concatenated_features(X: np.ndarray, label: str) -> None:
+    _validate_feature_array("concatenated", X, N_FEATURES, label)
+
+
 def extract_mel_stats(audio_path: str) -> np.ndarray:
     librosa = _optional_import("librosa")
-    y, sr = librosa.load(audio_path, sr=16000, mono=True, duration=30)
-    mel = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
+    y, sr = librosa.load(audio_path, sr=22050, mono=True, duration=30)
+    mel = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, n_fft=2048, hop_length=512)
     log_mel = librosa.power_to_db(mel, ref=np.max)
     stats = np.concatenate([
         log_mel.mean(axis=1),
         log_mel.std(axis=1),
+        log_mel.max(axis=1),  # matches extract_mel_stats.py: mean/std/max/min
         log_mel.min(axis=1),
-        log_mel.max(axis=1),
     ])
     return stats.reshape(1, -1).astype(np.float32)
 
@@ -427,7 +549,7 @@ def build_feature_blocks(
     text_stats, sentiment, mpnet_raw = process_text(lyrics, resources)
     mpnet_dl = _scale_embedding("mpnet", mpnet_raw, resources)
 
-    extracted_audio = extract_audio_features(audio_path) if audio_path and base_audio_mode == "Automatic" else None
+    extracted_audio = extract_audio_features(audio_path) if audio_path and base_audio_mode == BASE_AUDIO_AUTO else None
     base_audio, raw_audio, base_source = build_base_audio_features(
         extracted_audio,
         base_audio_mode,
@@ -466,12 +588,15 @@ def build_feature_blocks(
     }
 
     feature_count = sum(block.shape[1] for block in ml_blocks.values())
-    if feature_count != 4254:
-        raise ValueError(f"Expected 4,254 features, got {feature_count}")
+    if feature_count != N_FEATURES:
+        raise ValueError(f"Expected {N_FEATURES:,} features, got {feature_count}")
+    validate_feature_blocks(ml_blocks, "ML")
+    validate_feature_blocks(dl_blocks, "DL")
 
     context = {
         "raw_audio": raw_audio,
         "base_audio_source": base_source,
+        "base_metadata_warning": AUTO_METADATA_WARNING if base_audio_mode == BASE_AUDIO_AUTO else "",
         "extraction_notes": extraction_notes,
     }
     return ml_blocks, dl_blocks, context
@@ -479,6 +604,7 @@ def build_feature_blocks(
 
 def predict_ml(blocks: dict[str, np.ndarray]) -> dict[str, float]:
     resources = load_resources()
+    validate_feature_blocks(blocks, "ML")
     X = np.hstack([
         blocks["metadata"][:, :23],
         blocks["metadata"][:, 23:28],
@@ -489,11 +615,13 @@ def predict_ml(blocks: dict[str, np.ndarray]) -> dict[str, float]:
         blocks["panns"],
         blocks["mel_stats"],
     ]).astype(np.float32)
+    validate_concatenated_features(X, "ML")
 
     preds = {}
     for target, model in resources["ml_models"].items():
         value = float(model.predict(X)[0])
         if target == "popularity":
+            print(f"[DEBUG] ML raw {target}: {value:.6f}  → expm1 → {np.expm1(value):.6f}")
             value = float(np.clip(np.expm1(value), 0, 100))
         else:
             value = float(np.clip(value, 0, 1))
@@ -502,6 +630,7 @@ def predict_ml(blocks: dict[str, np.ndarray]) -> dict[str, float]:
 
 
 def predict_dl(blocks: dict[str, np.ndarray]) -> dict[str, float]:
+    validate_feature_blocks(blocks, "DL")
     model, torch, device = load_dl_model()
     tensors = [
         torch.from_numpy(blocks[name].astype(np.float32)).to(device)
@@ -510,11 +639,13 @@ def predict_dl(blocks: dict[str, np.ndarray]) -> dict[str, float]:
     with torch.no_grad():
         pred = model(*tensors).detach().cpu().numpy()[0]
 
+    pop_raw = float(pred[3])
+    print(f"[DEBUG] DL raw popularity: {pop_raw:.6f}  → expm1 → {np.expm1(pop_raw):.6f}")
     return {
         "valence": float(np.clip(pred[0], 0, 1)),
         "energy": float(np.clip(pred[1], 0, 1)),
         "danceability": float(np.clip(pred[2], 0, 1)),
-        "popularity": float(np.clip(np.expm1(pred[3]), 0, 100)),
+        "popularity": float(np.clip(np.expm1(pop_raw), 0, 100)),
     }
 
 
@@ -530,12 +661,14 @@ def format_results(source: str, ml_preds: dict[str, float], dl_preds: dict[str, 
     audio = context["raw_audio"]
     notes = context["extraction_notes"]
     notes_text = "\n".join(f"- {note}" for note in notes) if notes else "- All audio embedding branches extracted."
+    warning = context.get("base_metadata_warning", "")
+    warning_text = f"\n### Reliability Note\n{warning}\n" if warning else ""
     summary = f"""
 ### Source
 {source}
 
-### Base Audio Features
-- Mode: {context["base_audio_source"]}
+### Base Metadata Inputs
+- Source: {context["base_audio_source"]}
 - Tempo: {audio["tempo"]:.1f} BPM
 - Key: {KEY_NAMES[int(audio["key"])]} {"Major" if int(audio["mode"]) == 1 else "Minor"}
 - Loudness: {audio["loudness"]:.2f} dB
@@ -544,6 +677,7 @@ def format_results(source: str, ml_preds: dict[str, float], dl_preds: dict[str, 
 - Instrumentalness: {audio["instrumentalness"]:.3f}
 - Speechiness: {audio["speechiness"]:.3f}
 - Liveness: {audio["liveness"]:.3f}
+{warning_text}
 
 ### Extraction Notes
 {notes_text}
@@ -626,13 +760,17 @@ def create_interface():
                     artist_followers = gr.Number(label="Artist Followers", value=1_000_000, minimum=0)
                     artist_popularity = gr.Slider(0, 100, value=50, step=1, label="Artist Popularity")
 
-                base_audio_mode = gr.Radio(["Automatic", "Manual"], value="Automatic", label="Base Audio Features")
+                base_audio_mode = gr.Radio(
+                    [BASE_AUDIO_AUTO, BASE_AUDIO_MANUAL],
+                    value=BASE_AUDIO_AUTO,
+                    label="Base Metadata Source",
+                )
                 allow_zero_fallback = gr.Checkbox(
                     label="Allow zero fallback for unavailable audio embedding extractors",
                     value=False,
                 )
 
-                with gr.Accordion("Manual Base Audio Features", open=False):
+                with gr.Accordion("Manual Spotify-like Metadata", open=False):
                     acousticness = gr.Slider(0, 1, value=0.3, step=0.001, label="Acousticness")
                     instrumentalness = gr.Slider(0, 1, value=0.0, step=0.001, label="Instrumentalness")
                     speechiness = gr.Slider(0, 1, value=0.05, step=0.001, label="Speechiness")

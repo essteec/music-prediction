@@ -2,9 +2,7 @@
 
 ## Current Phase
 
-Thesis consolidation after Phase 4 deep learning experiments.
-
-**Status**: Dataset alignment and audio-embedding ML baselines are corrected. DL experiments A-H are complete. The project should now stop broad experimentation and move toward clean, thesis-ready comparison tables.
+**Status**: Dataset alignment, audio-embedding ML baselines, DL experiments A-H, HPO, and final test evaluation are all complete. The remaining work is live-app preprocessing standardization and validation.
 
 ---
 
@@ -12,10 +10,9 @@ Thesis consolidation after Phase 4 deep learning experiments.
 
 ### Semester 1 ML Baseline
 
-- Built the original 550K-song thesis pipeline with artist-aware train/val/test splits.
+- Built the original 550K-song pipeline with artist-aware train/val/test splits.
 - Trained broad classical ML baselines with engineered audio, text, sentiment, and MiniLM features.
 - Strongest original models were gradient boosting methods: CatBoost, XGBoost, LightGBM.
-- Published thesis/Kaggle artifacts from the first project stage.
 
 ### Phase 0: PyTorch MLP Baseline
 
@@ -92,13 +89,13 @@ Completed scripts:
 Best observed DL results across A-H (compared to XGBoost baseline):
 
 | Target | Best DL R2 | Source | Ultimate XGBoost R2 | Status |
-|---|---:|---:|---|---|
+|---|---:|---:|---:|---|---|
 | Valence | 0.7181 | Exp H | 0.6728 | DL wins |
 | Energy | 0.9069 | Exp H | 0.9073 | Tie / tiny ML lead |
 | Danceability | 0.7699 | Exp F | 0.7693 | Tie / tiny DL lead |
 | Popularity | 0.1133 | Exp C/D | 0.1478 | ML wins |
 
-Note: these compare DL against XGBoost (0.624 avg). The thesis_ml_models.py run later showed CatBoost achieves 0.647 avg, which changes the ranking significantly (see "Thesis Validation Runs" section below).
+Note: these compare DL against XGBoost (0.624 avg). The thesis_ml_models.py run later showed CatBoost achieves 0.647 avg, which changes the ranking significantly (see "Validation Runs" section below).
 
 Best single DL model for average performance:
 
@@ -112,7 +109,7 @@ Best single DL model for average performance:
 | Popularity | 0.0645 |
 | Average | 0.6147 |
 
-### Thesis Validation Runs
+### Validation Runs
 
 Both `ml/models/thesis_ml_models.py` and `dl/14_thesis_architecture_comparison.py` completed on validation.
 
@@ -123,13 +120,13 @@ Results at:
 **Critical finding: CatBoost (avg 0.647) beat the best DL model (AttentionTaskGatedFusionMLP, avg 0.631) on 3/4 targets.**
 
 | Target | CatBoost R² | Best DL R² | Winner |
-|---|---:|---:|---|
+|---|---:|---:|---:|---|
 | Valence | 0.7131 | 0.7178 | Tie (DL +0.005) |
 | Energy | **0.9224** | 0.9101 | CatBoost |
 | Danceability | **0.8027** | 0.7897 | CatBoost |
 | Popularity | **0.1487** | 0.1075 | CatBoost |
 
-This changes the thesis narrative. The earlier "DL wins Valence" claim was based on comparing against XGBoost (0.673). Against CatBoost (0.713), DL only ties. CatBoost's ordered boosting handles the mixed tabular+embedding 4254-feature space better than either XGBoost or multimodal DL.
+This changes the narrative. The earlier "DL wins Valence" claim was based on comparing against XGBoost (0.673). Against CatBoost (0.713), DL only ties. CatBoost's ordered boosting handles the mixed tabular+embedding 4254-feature space better than either XGBoost or multimodal DL.
 
 ### Hyperparameter Optimization Completed
 
@@ -157,7 +154,7 @@ All models trained on `train+val` (417,059 samples), evaluated once on `test` (7
 Final head-to-head (test):
 
 | Target | CatBoost_tuned R² | AttentionDL_tuned R² | Winner |
-|---|---:|---:|---|
+|---|---:|---:|---:|
 | Valence | 0.7220 | 0.7214 | Tie |
 | Energy | **0.9212** | 0.9050 | CatBoost |
 | Danceability | **0.7903** | 0.7700 | CatBoost |
@@ -168,17 +165,30 @@ HPO effect: CatBoost +0.004 avg, AttentionDL +0.005 avg. Ranking unchanged.
 
 Bug fix applied: `thesis_ml_models.py` — disabled `use_best_model` and removed `od_type`/`od_wait` for CatBoost retrain on `train+val` (no eval_set available).
 
-### Thesis Infrastructure (DL)
+### DL Infrastructure
 
 - `ml/models/thesis_ml_models.py`: split-explicit ML baseline on the 4254-feature DL-equivalent input set. Trains 8 model families (Mean, Ridge, XGBoost, LightGBM, CatBoost, MLPRegressor, ExtraTrees, RandomForest) with checkpointing, timing, and tuned-params support.
-- `dl/utils/thesis_models.py`: centralized source of truth for thesis DL architectures. Provides `FlatAllMLP`, re-exports `MultiModalFusionMLP`, `TaskGatedFusionMLP`, `AttentionTaskGatedFusionMLP`, and the `engineer_metadata()` helper for the feat eng variant.
+- `dl/utils/thesis_models.py`: centralized source of truth for DL architectures. Provides `FlatAllMLP`, re-exports `MultiModalFusionMLP`, `TaskGatedFusionMLP`, `AttentionTaskGatedFusionMLP`, and the `engineer_metadata()` helper for the feat eng variant.
 - `dl/14_thesis_architecture_comparison.py`: clean DL comparison pipeline. Supports `--eval-split val` (train + select by val R²) and `--eval-split test --retrain` (retrain on train+val + evaluate on test). Supports `--tuned-params` for architecture-specific HPO params. Runs 5 architectures with consistent hyperparams.
 
-### Comprehensive Thesis Notebook Suite (Complete)
+### Comprehensive Notebook Suite (Complete)
 
 - New comprehensive notebooks created and executed: `notebooks/20_*` through `notebooks/27_*` (8 notebooks, 117 total cells, all models/targets/modalities analyzed).
 - Publication-quality figures generated under `results/figures/thesis/`.
-- Plan reference: `implementation_plan_3a.md`. The earlier 10-15 concise suite is superseded for exploratory depth; 20-27 notebooks match the original 01-07 style with ~30 rich cells each.
+- Plan reference: `implementation_plan_3a.md`.
+
+### App Preprocessing Standardization (June 2026)
+
+Fixes applied to `app/` only. No training/preprocessing files were modified.
+
+- **Automatic extractor**: removed target-like outputs (valence, energy, danceability) from the heuristic feature dict — they are model predictions, not inputs. Also removed `time_signature` (not a trained input).
+- **Required-field validation**: added explicit check on base metadata keys before building the feature matrix.
+- **UI labels**: `Base Metadata Source` now shows two honest options: `Manual Spotify-like metadata` and `Estimated from uploaded audio`. Reliability warning shown in automatic mode.
+- **Feature contract validation**: each feature block is checked for correct shape (2D, row count 1, expected width) and finite values before model prediction.
+- **YouTube downloads**: now use training-time yt-dlp format `251/bestaudio` (Opus/WebM), no WAV postprocessing — eliminates format mismatch.
+- **Uploaded audio**: converted to standard Opus/WebM via FFmpeg before embedding extraction.
+- **Mel stats**: sample rate fixed from 16000 to 22050 with explicit n_fft=2048, hop_length=512, matching `scripts/audio-embedding-extraction/extract_mel_stats.py`.
+- **Preprocessing parity checker**: `validate_preprocessing_against_saved()` extended to check multiple rows against saved training feature arrays with configurable tolerance.
 
 ---
 
@@ -189,18 +199,6 @@ Some ML result folders use names like `ultimate_test`, but the scripts historica
 Going forward:
 
 1. Validation split is for model/architecture selection.
-2. Test split is for final thesis reporting only.
+2. Test split is for final reporting only.
 3. Result filenames must include the evaluated split explicitly.
 4. Final tables should not mix validation and test numbers.
-
----
-
-## Current Next Step
-
-Final test evaluation is **COMPLETE**. The project is now in the thesis-writing phase.
-
-Next actions:
-
-1. Write the thesis comparison chapter using the final test tables.
-2. Generate publication-quality figures (bar charts, radar plots, architecture diagrams).
-3. Optional: statistical significance tests (paired bootstrap) on per-sample predictions.
