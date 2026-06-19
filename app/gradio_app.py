@@ -7,9 +7,17 @@ AttentionTaskGatedFusionMLP checkpoint on the 4,254-feature thesis input space.
 
 from __future__ import annotations
 
+import os
+
+# Must be set before TensorFlow or PyTorch are imported.
+# TensorFlow (used for VGGish) and PyTorch (MERT, PANNs, MPNet, DL) both
+# probe NVML on import and conflict with each other's CUDA allocator.
+# TF cannot use the GPU here anyway (missing GPU libs), so hiding the GPU
+# from both frameworks eliminates the NVML conflict at zero cost.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+
 import importlib
 import hashlib
-import os
 import pickle
 import shutil
 import subprocess
@@ -123,7 +131,10 @@ def load_panns():
     torch = _optional_import("torch")
     panns_inference = _optional_import("panns_inference")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    return panns_inference.AudioTagging(checkpoint_path=None, device=device), device
+    # Use pre-downloaded weights if available; avoids re-downloading on every startup
+    _local_panns = Path.home() / "panns_data" / "Cnn14_mAP=0.431.pth"
+    checkpoint_path = str(_local_panns) if _local_panns.exists() else None
+    return panns_inference.AudioTagging(checkpoint_path=checkpoint_path, device=device), device
 
 
 @lru_cache(maxsize=1)
