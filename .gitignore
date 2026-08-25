@@ -113,3 +113,16 @@ spotify-songs-with-attributes-and-lyrics.zip
 !results/metrics/
 !results/figures/
 !results/**/.gitkeep
+
+# Models & Large Checkpoints
+models/
+*.ftz
+*.checkpoint.npy
+data/audio/
+data/embeddings/
+data/features/
+data/splits/
+data/similarity/
+data/manifests/
+data/processed/
+data/*.npy

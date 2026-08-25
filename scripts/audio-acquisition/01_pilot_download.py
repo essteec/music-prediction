@@ -30,7 +30,7 @@ import time
 import argparse
 import threading
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from queue import Queue, Empty
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -123,6 +123,37 @@ def init_log_file():
             ])
 
 
+def parse_artists_field(artists_value: str) -> List[str]:
+    """Parse artist names from old JSON/list format or new pipe-delimited format."""
+    artists = safe_eval_artists(artists_value)
+    if artists:
+        return artists
+
+    if not artists_value:
+        return []
+
+    if '|' in artists_value:
+        return [artist.strip() for artist in artists_value.split('|') if artist.strip()]
+
+    return [artists_value.strip()] if artists_value.strip() else []
+
+
+def get_song_fields(csv_row: Dict) -> Tuple[str, str, List[str], int, str]:
+    """Return normalized song fields for both old and current processed CSV schemas."""
+    song_id = csv_row.get('id') or csv_row.get('track_id') or ''
+    track_name = csv_row.get('name') or csv_row.get('track_name') or ''
+    artists_raw = csv_row.get('artists') or csv_row.get('artist_names') or '[]'
+    artists = parse_artists_field(artists_raw)
+
+    duration_raw = csv_row.get('duration_ms', 0)
+    try:
+        duration_ms = int(float(duration_raw))
+    except (TypeError, ValueError):
+        duration_ms = 0
+
+    return song_id, track_name, artists, duration_ms, artists_raw
+
+
 def log_result(row_idx: int, csv_row: Dict, result: Dict):
     """Append result to log file (thread-safe, with CSV formula injection protection)."""
     def sanitize_csv_cell(value):
@@ -131,15 +162,17 @@ def log_result(row_idx: int, csv_row: Dict, result: Dict):
             return "'" + value
         return value
     
+    song_id, track_name, _, duration_ms, artists_raw = get_song_fields(csv_row)
+    
     with log_lock:
         with open(LOG_FILE, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
                 row_idx,
-                sanitize_csv_cell(csv_row.get('id', '')),
-                sanitize_csv_cell(csv_row.get('name', '')),
-                sanitize_csv_cell(csv_row.get('artists', '')),
-                csv_row.get('duration_ms', ''),
+                sanitize_csv_cell(song_id),
+                sanitize_csv_cell(track_name),
+                sanitize_csv_cell(artists_raw),
+                duration_ms,
                 sanitize_csv_cell(result.get('query', '')),
                 result.get('youtube_id', ''),
                 sanitize_csv_cell(result.get('youtube_title', '')),
@@ -272,12 +305,7 @@ def process_song_search(row_idx: int, csv_row: Dict) -> Dict[str, Any]:
     
     try:
         # Parse CSV data
-        song_id = csv_row.get('id', '')
-        track_name = csv_row.get('name', '')
-        artists_str = csv_row.get('artists', '[]')
-        duration_ms = int(csv_row.get('duration_ms', 0))
-        
-        artists = safe_eval_artists(artists_str)
+        song_id, track_name, artists, duration_ms, _ = get_song_fields(csv_row)
         if not artists or not track_name:
             result['error_msg'] = 'Missing track name or artists'
             return result
