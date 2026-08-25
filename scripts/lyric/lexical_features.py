@@ -2,7 +2,7 @@
 Lyric Structure, Lexical Richness, Sentiment, and Emotion Feature Extraction.
 Extracts:
 - Structure: line counts, stanza counts, repetition ratios
-- Lexical Richness: TTR, Root TTR, MTLD, HD-D, Hapax legomena ratio
+- Lexical Richness: TTR, Root TTR, MTLD, Hapax legomena ratio
 - Sentiment/Emotion: VADER, NRC EmoLex (8 emotions + positive/negative)
 - Readability: Flesch ease, syllable count
 - Keywords: YAKE top-5 key phrases
@@ -14,6 +14,7 @@ import re
 import json
 import unicodedata
 from pathlib import Path
+from collections import Counter
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -21,15 +22,23 @@ from concurrent.futures import ProcessPoolExecutor
 
 import textstat
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from nrclex import NRCLex
 from lexicalrichness import LexicalRichness
 import yake
+import nrclex
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 SONGS_CSV = DATA_DIR / "processed" / "songs.csv"
 OUTPUT_DIR = DATA_DIR / "features" / "lyric"
 OUTPUT_FILE = OUTPUT_DIR / "lyric_stats.parquet"
+
+# Load NRC lexicon directly
+NRC_JSON_PATH = os.path.join(os.path.dirname(nrclex.__file__), 'data', 'nrc_en.json')
+with open(NRC_JSON_PATH) as f:
+    NRC_DICT = json.load(f)
+
+vader = SentimentIntensityAnalyzer()
+kw_extractor = yake.KeywordExtractor(lan="en", n=2, dedupLim=0.8, top=5)
 
 def clean_lyric_text(text: str) -> str:
     if not isinstance(text, str) or not text.strip():
@@ -44,10 +53,6 @@ def clean_lyric_text(text: str) -> str:
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = re.sub(r'[ \t]+', ' ', text)
     return text.strip()
-
-# Initialize extractors
-vader = SentimentIntensityAnalyzer()
-kw_extractor = yake.KeywordExtractor(lan="en", n=2, dedupLim=0.8, top=5)
 
 def extract_single_lyric_features(raw_text: str) -> dict:
     empty_res = {
@@ -105,16 +110,15 @@ def extract_single_lyric_features(raw_text: str) -> dict:
     try:
         lex = LexicalRichness(text)
         words_count = max(lex.words, 1)
+        word_counts = Counter(lex.wordlist)
+        hapax_count = sum(1 for w, c in word_counts.items() if c == 1)
+        hapax_ratio = hapax_count / words_count
         ttr = float(lex.ttr)
         root_ttr = float(lex.rttr)
-        # MTLD is bounded to prevent hang
         try:
-            mtld = float(lex.mtld(threshold=0.72)) if words_count > 10 else ttr * 10
+            mtld = float(lex.mtld(threshold=0.72))
         except Exception:
             mtld = 0.0
-        # Hapax
-        hapax_count = sum(1 for w, c in lex.wordlist.items() if c == 1) if hasattr(lex, 'wordlist') else 0
-        hapax_ratio = hapax_count / words_count
     except Exception:
         ttr, root_ttr, mtld, hapax_ratio = 0.0, 0.0, 0.0, 0.0
 
@@ -136,19 +140,18 @@ def extract_single_lyric_features(raw_text: str) -> dict:
         vader_comp, vader_pos, vader_neg, vader_neu = 0.0, 0.0, 0.0, 1.0
 
     # NRC EmoLex
-    nrc_feats = {
-        'nrc_anger': 0.0, 'nrc_fear': 0.0, 'nrc_anticipation': 0.0, 'nrc_trust': 0.0,
-        'nrc_surprise': 0.0, 'nrc_sadness': 0.0, 'nrc_joy': 0.0, 'nrc_disgust': 0.0,
-        'nrc_positive': 0.0, 'nrc_negative': 0.0
-    }
-    try:
-        emotion_obj = NRCLex(text)
-        freqs = emotion_obj.affect_frequencies
-        for k in nrc_feats.keys():
-            emotion_name = k.replace('nrc_', '')
-            nrc_feats[k] = float(freqs.get(emotion_name, 0.0))
-    except Exception:
-        pass
+    tokens = re.findall(r'[a-zA-Z]+', text.lower())
+    total_tokens = max(len(tokens), 1)
+    nrc_counts = Counter()
+    for tok in tokens:
+        emots = NRC_DICT.get(tok)
+        if emots:
+            for emo in emots:
+                nrc_counts[emo] += 1
+
+    nrc_feats = {f'nrc_{e}': round(nrc_counts[e] / total_tokens, 4) for e in [
+        'anger', 'fear', 'anticipation', 'trust', 'surprise', 'sadness', 'joy', 'disgust', 'positive', 'negative'
+    ]}
 
     # YAKE Keywords
     try:
@@ -178,7 +181,7 @@ def extract_single_lyric_features(raw_text: str) -> dict:
         'vader_neu': round(vader_neu, 4),
         'top_keywords_json': top_keywords_json
     }
-    res.update({k: round(v, 4) for k, v in nrc_feats.items()})
+    res.update(nrc_feats)
     return res
 
 def main():
