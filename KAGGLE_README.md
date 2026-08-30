@@ -38,31 +38,41 @@ All lyrics were cleaned (removing Genius contributor tags, section headers `[Cho
 
 | Deliverable | File Path | Description |
 |---|---|---|
-| **Audio kNN Graph** | `knn_audio_top50.parquet` | Pre-computed Top-50 nearest neighbors via FAISS cosine indexing on concatenated CLAP + MERT embeddings. |
-| **Lyric kNN Graph** | `knn_lyric_top50.parquet` | Pre-computed Top-50 nearest neighbors via FAISS cosine indexing on Multilingual-E5 + BGE-M3 embeddings. |
-| **2D Map Projections** | `umap_2d_*.parquet` | PCA-initialized t-SNE 2D coordinates normalized to `[-100, 100]` for WebGL song map visualization (Audio, Lyric, and Combined). |
-| **Artist-Grouped Splits** | `artist_grouped_5fold.parquet` | Strict 5-fold cross-validation split grouped by `artist_id` to prevent data leakage. |
-| **Temporal Split** | `temporal_split.parquet` | Chronological split (Train: ≤2022, Val: 2023, Test: 2024–2025) for real-world future generalization testing. |
+| **Audio kNN Graph** | `knn_audio_top100.parquet` | Pre-computed Top-100 nearest neighbors via cosine indexing on optimal fused CLAP + MERT-330M + VGGish embeddings. |
+| **Lyric kNN Graph** | `knn_lyric_top100.parquet` | Pre-computed Top-100 nearest neighbors via cosine indexing on optimal fused Harrier-0.6B + Multilingual-E5 embeddings. |
+| **Combined Graph** | `knn_combined_top100.parquet` | Pre-computed Top-100 nearest neighbors via 50/50 multimodal fusion of Audio and Lyrics. |
+| **2D UMAP Projections** | `umap_2d_*.parquet` | 2D projection coordinates for Audio, Lyric, and Combined Multimodal representations. |
+| **Cross-Validation** | `artist_grouped_5fold.parquet` | 5-fold GroupKFold by `artist_id` for leakage-free evaluation. |
 
 ---
 
-## ⚡ 4. Quick Start in Python
+## ⚡ 3. Quickstart Code Snippet
 
 ```python
 import pandas as pd
 import numpy as np
 
-# 1. Load song metadata & extracted acoustic features
+# 1. Load Primary Metadata
 songs = pd.read_parquet('metadata/songs.parquet')
-audio_dsp = pd.read_parquet('features/audio/dsp_librosa.parquet')
-emotions = pd.read_parquet('features/lyric/go_emotions.parquet')
 
-# 2. Load neural embeddings
-clap = np.load('embeddings/audio/clap_512d.npy')          # (10000, 512)
-lyrics_e5 = np.load('embeddings/lyrics/multilingual_e5_large_1024d.npy') # (10000, 1024)
+# 2. Load Acoustic Descriptors & Vocal Activity
+dsp = pd.read_parquet('features/audio/dsp_librosa.parquet')
+vad = pd.read_parquet('features/audio/vad.parquet')
 
-# 3. Use 5-fold zero-leakage cross-validation
-splits = pd.read_parquet('splits/artist_grouped_5fold.parquet')
-train_idx = np.where(splits['fold'] != 0)[0]
-test_idx = np.where(splits['fold'] == 0)[0]
+# 3. Load Multilingual Lyric Stats & RoBERTa Emotions
+lyric_stats = pd.read_parquet('features/lyric/lyric_stats.parquet')
+go_emotions = pd.read_parquet('features/lyric/go_emotions.parquet')
+
+# 4. Load Dense Embeddings
+audio_clap = np.load('embeddings/audio/clap_512d.npy')                 # (10000, 512)
+audio_mert = np.load('embeddings/audio/mert_330m_embeddings_1024d.npy') # (10000, 1024)
+lyrics_harrier = np.load('embeddings/lyric/harrier_embeddings_1024d.npy') # (10000, 1024)
+lyrics_e5 = np.load('embeddings/lyric/multilingual_e5_large_1024d.npy') # (10000, 1024)
+
+# 5. Instant Similarity Query (Top-100 Fused Graph)
+knn = pd.read_parquet('similarity/knn_combined_top100.parquet')
+query_idx = 0  # e.g., Lady Gaga - Bad Romance
+top10_neighbors = knn.iloc[query_idx]['top100_neighbor_track_ids'][:10]
+print(f"Top 10 Recommendations for '{songs.iloc[query_idx]['track_name']}':")
+print(songs[songs['track_id'].isin(top10_neighbors)][['track_name', 'artist_names']])
 ```

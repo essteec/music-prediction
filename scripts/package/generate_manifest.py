@@ -52,7 +52,7 @@ def main():
 
     for fp_str in sorted(all_files):
         fp = Path(fp_str)
-        if fp.suffix not in ('.parquet', '.npy', '.json', '.csv') or 'checkpoint' in fp.name or 'pilot' in fp.parts:
+        if fp.suffix not in ('.parquet', '.npy', '.npz', '.json', '.csv') or 'checkpoint' in fp.name or 'pilot' in fp.parts:
             continue
 
         rel_path = str(fp.relative_to(DATA_DIR))
@@ -63,6 +63,7 @@ def main():
         file_meta = {
             'relative_path': rel_path,
             'size_kb': round(size_bytes / 1024, 2),
+            'size_mb': round(size_bytes / (1024 * 1024), 2),
             'sha256': sha256
         }
 
@@ -78,6 +79,13 @@ def main():
                 arr = np.load(fp)
                 file_meta['shape'] = list(arr.shape)
                 file_meta['dtype'] = str(arr.dtype)
+            except Exception:
+                pass
+        elif fp.suffix == '.npz':
+            try:
+                d = np.load(fp)
+                file_meta['keys'] = list(d.keys())
+                file_meta['shapes'] = {k: list(d[k].shape) for k in d.keys()}
             except Exception:
                 pass
 

@@ -45,19 +45,22 @@ This document lists all 40 files included in the Kaggle dataset package (`spotif
 ### Audio Embeddings (`embeddings/audio/`)
 | File Path | Format | Shape / Dtype | Size | Description |
 |---|---|---|---|---|
-| `embeddings/audio/clap_512d.npy` | NumPy | (10000, 512) float32 | 19.53 MB | LAION-CLAP zero-shot text-audio cross-modal embeddings |
-| `embeddings/audio/mert_embeddings_768d.npy` | NumPy | (10000, 768) float32 | 29.30 MB | MERT-v1-95M self-supervised music transformer representations |
+| `embeddings/audio/clap_512d.npy` | NumPy | (10000, 512) float32 | 19.53 MB | LAION-CLAP zero-shot text-audio cross-modal full-song mean embeddings |
+| `embeddings/audio/mert_330m_embeddings_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | MERT-v1-330M self-supervised music transformer full-song mean embeddings |
+| `embeddings/audio/mert_330m_all_chunks.npz` | NPZ | (74559, 1024) float16 | 167.05 MB | MERT-v1-330M CSR-indexed tensor of all consecutive 30s chunk representations |
+| `embeddings/audio/mert_embeddings_768d.npy` | NumPy | (10000, 768) float32 | 29.30 MB | MERT-v1-95M representations |
 | `embeddings/audio/panns_embeddings_2048d.npy` | NumPy | (10000, 2048) float32 | 78.13 MB | PANNs Cnn14 deep audio representations |
 | `embeddings/audio/panns_tags_527d.npy` | NumPy | (10000, 527) float32 | 20.10 MB | PANNs 527 AudioSet sound & music class probability vectors |
 | `embeddings/audio/panns_tags_labels.json` | JSON | 527 classes | 0.02 MB | Human-readable AudioSet class name mappings |
-| `embeddings/audio/vggish_embeddings_128d.npy` | NumPy | (10000, 128) float32 | 4.88 MB | VGGish deep acoustic embeddings |
+| `embeddings/audio/vggish_embeddings_128d.npy` | NumPy | (10000, 128) float32 | 4.88 MB | VGGish deep acoustic full-song embeddings |
 | `embeddings/audio/mel_stats_embeddings_512d.npy` | NumPy | (10000, 512) float32 | 19.53 MB | Mel-frequency spectral statistics embeddings |
 
-### Lyric Embeddings (`embeddings/lyrics/`)
+### Lyric Embeddings (`embeddings/lyric/`)
 | File Path | Format | Shape / Dtype | Size | Description |
 |---|---|---|---|---|
-| `embeddings/lyrics/multilingual_e5_large_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | Multilingual-E5-Large embeddings (Pilot benchmark winner, nDCG@10: 0.3001) |
-| `embeddings/lyrics/bge_m3_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | BAAI/BGE-M3 embeddings (8,192-token full document context, 100+ languages) |
+| `embeddings/lyric/harrier_embeddings_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | Microsoft Harrier-OSS-v1-0.6B embeddings (MTEB rank #10, 32k context) |
+| `embeddings/lyric/multilingual_e5_large_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | Multilingual-E5-Large embeddings (Pilot benchmark winner, nDCG@10: 0.3001) |
+| `embeddings/lyric/bge_m3_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | BAAI/BGE-M3 embeddings (8,192-token full document context, 100+ languages) |
 
 ---
 
@@ -65,11 +68,12 @@ This document lists all 40 files included in the Kaggle dataset package (`spotif
 
 | File Path | Format | Shape | Size | Description |
 |---|---|---|---|---|
-| `similarity/knn_audio_top50.parquet` | Parquet | (10000, 5) | 3.12 MB | Pre-computed Top-50 nearest neighbors for Audio (CLAP + MERT) with track IDs & similarity scores |
-| `similarity/knn_lyric_top50.parquet` | Parquet | (10000, 5) | 3.02 MB | Pre-computed Top-50 nearest neighbors for Lyrics (E5 + BGE-M3) with track IDs & similarity scores |
-| `similarity/umap_2d_audio.parquet` | Parquet | (10000, 4) | 0.17 MB | 2D audio map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
-| `similarity/umap_2d_lyric.parquet` | Parquet | (10000, 4) | 0.17 MB | 2D lyric map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
-| `similarity/umap_2d_combined.parquet` | Parquet | (10000, 4) | 0.17 MB | 2D multimodal map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
+| `similarity/knn_audio_top100.parquet` | Parquet | (10000, 5) | 9.32 MB | Pre-computed Top-100 nearest neighbors for Audio (CLAP + MERT-330M + VGGish) with track IDs & similarity scores |
+| `similarity/knn_lyric_top100.parquet` | Parquet | (10000, 5) | 9.19 MB | Pre-computed Top-100 nearest neighbors for Lyrics (Harrier + E5-Large) with track IDs & similarity scores |
+| `similarity/knn_combined_top100.parquet` | Parquet | (10000, 5) | 9.30 MB | Pre-computed Top-100 nearest neighbors for Combined Multimodal (50% Audio + 50% Lyric) |
+| `similarity/umap_2d_audio.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D audio map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
+| `similarity/umap_2d_lyric.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D lyric map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
+| `similarity/umap_2d_combined.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D multimodal map projection coordinates (`proj_x`, `proj_y`) normalized for WebGL canvas |
 
 ---
 

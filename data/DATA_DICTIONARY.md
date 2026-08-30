@@ -34,21 +34,25 @@ spotify-10k-music-features/
 │
 ├── embeddings/
 │   ├── audio/
-│   │   ├── clap_512d.npy               (10000, 512, float32 - LAION-CLAP zero-shot vectors)
+│   │   ├── clap_512d.npy               (10000, 512, float32 - LAION-CLAP full-song mean vectors)
+│   │   ├── mert_330m_embeddings_1024d.npy (10000, 1024, float32 - MERT-v1-330M full-song mean vectors)
+│   │   ├── mert_330m_all_chunks.npz    (74559, 1024, float16 - All consecutive 30s chunk representations)
 │   │   ├── mert_embeddings_768d.npy    (10000, 768, float32 - MERT-v1-95M representations)
 │   │   ├── panns_embeddings_2048d.npy  (10000, 2048, float32 - PANNs Cnn14 deep embeddings)
 │   │   ├── panns_tags_527d.npy         (10000, 527, float32 - PANNs AudioSet tag probabilities)
 │   │   ├── panns_tags_labels.json      (527 AudioSet label definitions)
-│   │   ├── vggish_embeddings_128d.npy  (10000, 128, float32 - VGGish embeddings)
+│   │   ├── vggish_embeddings_128d.npy  (10000, 128, float32 - VGGish full-song embeddings)
 │   │   └── mel_stats_embeddings_512d.npy (10000, 512, float32 - Mel spectral statistics)
 │   │
-│   └── lyrics/
-│       ├── multilingual_e5_large_1024d.npy (10000, 1024, float32 - E5-large winner embeddings)
+│   └── lyric/
+│       ├── harrier_embeddings_1024d.npy (10000, 1024, float32 - Harrier-OSS-v1-0.6B 32k context embeddings)
+│       ├── multilingual_e5_large_1024d.npy (10000, 1024, float32 - Multilingual E5-Large embeddings)
 │       └── bge_m3_1024d.npy            (10000, 1024, float32 - BGE-M3 full context 8k embeddings)
 │
 ├── similarity/
-│   ├── knn_audio_top50.parquet         (10,000 × 5 - Top-50 nearest neighbors for Audio)
-│   ├── knn_lyric_top50.parquet         (10,000 × 5 - Top-50 nearest neighbors for Lyrics)
+│   ├── knn_audio_top100.parquet        (10,000 × 5 - Top-100 nearest neighbors for Optimal Audio Fusion)
+│   ├── knn_lyric_top100.parquet        (10,000 × 5 - Top-100 nearest neighbors for Optimal Lyric Fusion)
+│   ├── knn_combined_top100.parquet     (10,000 × 5 - Top-100 nearest neighbors for Combined Multimodal)
 │   ├── umap_2d_audio.parquet           (10,000 × 4 - 2D Projection coordinates for Audio)
 │   ├── umap_2d_lyric.parquet           (10,000 × 4 - 2D Projection coordinates for Lyrics)
 │   └── umap_2d_combined.parquet        (10,000 × 4 - 2D Projection coordinates for Multimodal)

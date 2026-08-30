@@ -184,8 +184,7 @@ def analyze_track_language(text, model):
         'is_korean': is_ko,
         'is_tagalog': is_tl,
         'is_swedish': is_sv,
-        'is_norwegian': is_no,
-        'is_danish': is_da,
+                'is_danish': is_da,
         'is_finnish': is_fi,
         'is_scandinavian': is_scandi,
         'is_punjabi': is_pa,
@@ -221,7 +220,7 @@ def main():
         'is_indonesian', 'is_portuguese', 'is_korean', 'is_japanese', 'is_turkish',
         'is_tagalog', 'is_french', 'is_italian', 'is_german', 'is_chinese',
         'is_dutch', 'is_russian', 'is_arabic', 'is_scandinavian', 'is_swedish',
-        'is_norwegian', 'is_danish', 'is_finnish', 'is_punjabi', 'is_tamil', 'is_telugu', 'is_polish'
+        'is_danish', 'is_finnish', 'is_punjabi', 'is_tamil', 'is_telugu', 'is_polish'
     ]
     for c in cols_to_print:
         print(f"  {c:<24}: {out_df[c].sum():>5} tracks")
