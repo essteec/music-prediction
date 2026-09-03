@@ -47,7 +47,7 @@ def main():
     checksums = {}
 
     all_files = []
-    for sub in ['features', 'embeddings', 'similarity', 'splits', 'processed']:
+    for sub in ['metadata', 'features', 'embeddings', 'similarity', 'splits', 'processed']:
         all_files.extend(glob.glob(str(DATA_DIR / sub / "**/*.*"), recursive=True))
 
     for fp_str in sorted(all_files):

@@ -18,4 +18,3 @@ This study evaluates the individual contribution of each multilingual lyric embe
 1. **Neighbor Overlap @ K (Jaccard Rank Overlap):** Percentage of Top-K nearest neighbors shared with the full 3-model baseline. Lower overlap indicates the removed model provides a **distinct semantic representation**.
 2. **Genre Agreement Rate @ 10 & Delta (Δ):** Percentage of Top-10 neighbors that share at least one genre with the query song. Negative Δ indicates removing the model degrades genre consistency.
 3. **Artist Agreement Rate @ 10 & Delta (Δ):** Percentage of Top-10 neighbors by the same artist/collaborator.
-
