@@ -1,6 +1,6 @@
 """
-Generates notebooks/01_quickstart_and_dataset.ipynb
-Quickstart guide and comprehensive tour across all multimodal features, embeddings, and Top-100 similarity graphs.
+Generates notebooks/01_quickstart_and_dataset_tour.ipynb
+Quickstart guide and comprehensive tour across all multimodal features, embeddings, and Top-250 similarity graphs.
 """
 
 import nbformat as nbf
@@ -10,7 +10,7 @@ nb = nbf.v4.new_notebook()
 cells = []
 
 # Title
-cells.append(nbf.v4.new_markdown_cell("""# 🎵 Spotify Top-10,000 Songs: Dataset Tour & Quickstart
+cells.append(nbf.v4.new_markdown_cell("""#  Spotify Top-10,000 Songs: Dataset Tour & Quickstart
 ### A Multimodal Dataset for Hit Song Prediction, Audio Embedding Benchmarks, and Music Recommendation
 
 Welcome! This notebook provides a fast, comprehensive walkthrough of the **Spotify Top-10,000 Songs Dataset**.
@@ -20,7 +20,7 @@ We demonstrate how to load and query each component:
 2. **Engineered Feature Tables** (`features/audio/`, `features/lyric/`, `features/metadata/`)
 3. **Full-Song Deep Audio Embeddings** (`embeddings/audio/` — CLAP, MERT-330M, PANNs, VGGish, Mel Stats)
 4. **Multilingual Lyric Embeddings** (`embeddings/lyric/` — Harrier-OSS-v1-0.6B, Multilingual E5-Large)
-5. **Instant Pre-computed Top-100 Similarity Graphs** (`similarity/knn_*_top100.parquet` — Audio, Lyric, Mood, Combined)
+5. **Instant Pre-computed Top-250 Similarity Graphs** (`similarity/knn_*_top250.parquet` — Audio, Lyric, Mood, Combined)
 6. **4-Facet 2D Latent Space Visualizations** (`similarity/umap_2d_*.parquet`)
 7. **Zero-Leakage ML Evaluation Splits** (`splits/`)
 """))
@@ -100,19 +100,19 @@ print("\\nTop 8 Languages in Dataset:")
 print(lang_id['primary_language'].value_counts().head(8))
 """))
 
-# Section 5: Top-100 Similarity Graphs
-cells.append(nbf.v4.new_markdown_cell("""## 5. Instant Similarity Search with Pre-computed Top-100 kNN Graphs (`similarity/`)
-We load the pre-computed Top-100 similarity matrices for sub-millisecond query lookups:
-- `knn_audio_top100.parquet`: Fused acoustic similarity (`CLAP + MERT-330M + VGGish` = 1664-D).
-- `knn_lyric_top100.parquet`: Fused lyrical storytelling similarity (`Harrier + E5-Large` = 2048-D).
-- `knn_mood_top100.parquet`: Dedicated mood, emotion & vibe similarity (`Spotify + GoEmotions + Vocal DSP` = 59-D).
-- `knn_combined_top100.parquet`: Master multimodal similarity (`Audio + Lyric + Mood + Genre + Temporal` = 3795-D).
+# Section 5: Top-250 Similarity Graphs
+cells.append(nbf.v4.new_markdown_cell("""## 5. Instant Similarity Search with Pre-computed Top-250 kNN Graphs (`similarity/`)
+We load the pre-computed Top-250 similarity matrices for sub-millisecond query lookups:
+- `knn_audio_top250.parquet`: Fused acoustic similarity (`CLAP + MERT-330M + VGGish` = 1664-D).
+- `knn_lyric_top250.parquet`: Fused lyrical storytelling similarity (`Harrier + E5-Large` = 2048-D).
+- `knn_mood_top250.parquet`: Unified mood, vibe & context similarity (`Genre 40% + Spotify 30% + Temporal 15% + Vocal 15%` = 83-D).
+- `knn_combined_top250.parquet`: Master multimodal similarity (`73% Neural (Audio 38% + Lyric 35%) + 27% Context (Genre 11% + Spotify 8% + Temporal 4% + Vocal 4%)` = 3795-D).
 """))
 cells.append(nbf.v4.new_code_cell("""# Load all 4 similarity graphs
-knn_audio = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_audio_top100.parquet')
-knn_lyric = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_lyric_top100.parquet')
-knn_mood  = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_mood_top100.parquet')
-knn_comb  = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_combined_top100.parquet')
+knn_audio = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_audio_top250.parquet')
+knn_lyric = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_lyric_top250.parquet')
+knn_mood  = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_mood_top250.parquet')
+knn_comb  = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_combined_top250.parquet')
 
 query_idx = 10
 query_title = songs.iloc[query_idx]['track_name']
@@ -120,20 +120,20 @@ query_artist = songs.iloc[query_idx]['artist_names']
 
 print(f"Target Song [{query_idx}]: '{query_title}' by {query_artist}\\n")
 
-print("🎵 1. Acoustically Most Similar (knn_audio_top100):")
-for nb_idx, sim in zip(knn_audio.iloc[query_idx]['top100_neighbor_indices'][:3], knn_audio.iloc[query_idx]['top100_similarities'][:3]):
+print("1. Acoustically Most Similar (knn_audio_top250):")
+for nb_idx, sim in zip(knn_audio.iloc[query_idx]['top250_neighbor_indices'][:3], knn_audio.iloc[query_idx]['top250_similarities'][:3]):
     print(f"  - '{songs.iloc[nb_idx]['track_name']}' by {songs.iloc[nb_idx]['artist_names']} (Sim: {sim:.3f})")
 
-print("\\n📝 2. Lyrically Most Similar (knn_lyric_top100):")
-for nb_idx, sim in zip(knn_lyric.iloc[query_idx]['top100_neighbor_indices'][:3], knn_lyric.iloc[query_idx]['top100_similarities'][:3]):
+print("\\n 2. Lyrically Most Similar (knn_lyric_top250):")
+for nb_idx, sim in zip(knn_lyric.iloc[query_idx]['top250_neighbor_indices'][:3], knn_lyric.iloc[query_idx]['top250_similarities'][:3]):
     print(f"  - '{songs.iloc[nb_idx]['track_name']}' by {songs.iloc[nb_idx]['artist_names']} (Sim: {sim:.3f})")
 
-print("\\n🎭 3. Mood & Vibe Most Similar (knn_mood_top100):")
-for nb_idx, sim in zip(knn_mood.iloc[query_idx]['top100_neighbor_indices'][:3], knn_mood.iloc[query_idx]['top100_similarities'][:3]):
+print("\\n 3. Unified Mood & Context Most Similar (knn_mood_top250):")
+for nb_idx, sim in zip(knn_mood.iloc[query_idx]['top250_neighbor_indices'][:3], knn_mood.iloc[query_idx]['top250_similarities'][:3]):
     print(f"  - '{songs.iloc[nb_idx]['track_name']}' by {songs.iloc[nb_idx]['artist_names']} (Sim: {sim:.3f})")
 
-print("\\n🌐 4. Master Multimodal Recommendations (knn_combined_top100):")
-for nb_idx, sim in zip(knn_comb.iloc[query_idx]['top100_neighbor_indices'][:3], knn_comb.iloc[query_idx]['top100_similarities'][:3]):
+print("\\n 4. Master Multimodal Recommendations (knn_combined_top250):")
+for nb_idx, sim in zip(knn_comb.iloc[query_idx]['top250_neighbor_indices'][:3], knn_comb.iloc[query_idx]['top250_similarities'][:3]):
     print(f"  - '{songs.iloc[nb_idx]['track_name']}' by {songs.iloc[nb_idx]['artist_names']} (Sim: {sim:.3f})")
 """))
 
@@ -141,7 +141,7 @@ for nb_idx, sim in zip(knn_comb.iloc[query_idx]['top100_neighbor_indices'][:3], 
 cells.append(nbf.v4.new_markdown_cell("""## 6. Multi-Modal 2D Visualizations (`similarity/umap_2d_*.parquet`)
 Side-by-side 2D semantic maps comparing **Acoustic Audio Space**, **Semantic Lyric Space**, **Mood & Emotion Space**, and **Master Multimodal Space**.
 
-> **Interpretation Note**: The 2D coordinates in `similarity/umap_2d_*.parquet` are qualitative non-linear dimensionality reduction projections intended for visual exploration and clustering inspection. For quantitative metric distance or true mathematical similarity, always use the high-dimensional embeddings or the Top-100 kNN graph tables.
+> **Interpretation Note**: The 2D coordinates in `similarity/umap_2d_*.parquet` are qualitative non-linear dimensionality reduction projections intended for visual exploration and clustering inspection. For quantitative metric distance or true mathematical similarity, always use the high-dimensional embeddings or the Top-250 kNN graph tables.
 """))
 cells.append(nbf.v4.new_code_cell("""# Load all 4 UMAP projections
 umap_audio = pd.read_parquet(DATA_DIR / 'similarity' / 'umap_2d_audio.parquet')
@@ -166,7 +166,7 @@ fig, axes = plt.subplots(1, 4, figsize=(22, 5))
 
 # 1. Audio UMAP
 axes[0].scatter(umap_audio['proj_x'], umap_audio['proj_y'], c=audio_colors, alpha=0.3, s=5)
-axes[0].set_title("1. Acoustic Audio Space (CLAP+MERT)", fontsize=10, fontweight='bold')
+axes[0].set_title("1. Acoustic Audio Space (CLAP+MERT+VGGISH)", fontsize=10, fontweight='bold')
 axes[0].set_xlabel("UMAP 1")
 axes[0].set_ylabel("UMAP 2")
 axes[0].grid(True, alpha=0.2)
@@ -180,14 +180,14 @@ axes[1].grid(True, alpha=0.2)
 
 # 3. Mood UMAP
 axes[2].scatter(umap_mood['proj_x'], umap_mood['proj_y'], c=songs['valence'], cmap='coolwarm', alpha=0.35, s=5)
-axes[2].set_title("3. Mood & Emotion Space (Valence)", fontsize=10, fontweight='bold')
+axes[2].set_title("3. Unified Mood & Context Space (83-D)", fontsize=10, fontweight='bold')
 axes[2].set_xlabel("UMAP 1")
 axes[2].set_ylabel("UMAP 2")
 axes[2].grid(True, alpha=0.2)
 
 # 4. Master Combined UMAP
 axes[3].scatter(umap_comb['proj_x'], umap_comb['proj_y'], c=songs['energy'], cmap='plasma', alpha=0.35, s=5)
-axes[3].set_title("4. Master Multimodal Space (Energy)", fontsize=10, fontweight='bold')
+axes[3].set_title("4. Master Multimodal Space (3795-D)", fontsize=10, fontweight='bold')
 axes[3].set_xlabel("UMAP 1")
 axes[3].set_ylabel("UMAP 2")
 axes[3].grid(True, alpha=0.2)
@@ -213,7 +213,7 @@ print(temp_split['split'].value_counts())
 
 nb['cells'] = cells
 
-out_file = Path("notebooks/01_quickstart_and_dataset.ipynb")
+out_file = Path("notebooks/01_quickstart_and_dataset_tour.ipynb")
 with open(out_file, 'w', encoding='utf-8') as f:
     nbf.write(nb, f)
 

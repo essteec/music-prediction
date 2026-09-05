@@ -30,9 +30,10 @@
 | **Lyric Embeddings** | `embeddings/lyric/harrier_embeddings_1024d.npy` | (10000, 1024) | **0 / 0** | 203 | **0** | ✅ 9,797 lyric tracks encoded; 203 no-lyric tracks = 0 |
 | | `embeddings/lyric/multilingual_e5_large_1024d.npy` | (10000, 1024) | **0 / 0** | 203 | **0** | ✅ 9,797 lyric tracks encoded; 203 no-lyric tracks = 0 |
 | | `embeddings/lyric/bge_m3_1024d.npy` | (10000, 1024) | **0 / 0** | 203 | **0** | ✅ 9,797 lyric tracks encoded; 203 no-lyric tracks = 0 |
-| **Similarity & Splits** | `similarity/knn_audio_top100.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-100 audio nearest neighbors (CLAP + MERT-330M + VGGish) |
-| | `similarity/knn_lyric_top100.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-100 lyric nearest neighbors (Harrier + E5-Large) |
-| | `similarity/knn_combined_top100.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-100 multimodal nearest neighbors (50% Audio + 50% Lyric) |
+| **Similarity & Splits** | `similarity/knn_audio_top250.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-250 audio nearest neighbors (CLAP + MERT-330M + VGGish) |
+| | `similarity/knn_lyric_top250.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-250 lyric nearest neighbors (Harrier + E5-Large) |
+| | `similarity/knn_mood_top250.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-250 unified mood & context nearest neighbors (83-D) |
+| | `similarity/knn_combined_top250.parquet` | (10000, 5) | **0 / 0** | **0** | **0** | ✅ Top-250 master multimodal nearest neighbors (3,795-D: 73% Neural / 27% Context) |
 | | `similarity/umap_2d_*.parquet` | (10000, 4) | **0 / 0** | **0** | **0** | ✅ 2D coordinates normalized to `[-100, 100]` |
 | | `splits/artist_grouped_5fold.parquet` | (10000, 4) | **0 / 0** | **0** | **0** | ✅ Exactly 2,000 tracks per fold (0 leakage) |
 | | `splits/temporal_split.parquet` | (10000, 4) | **0 / 0** | **0** | **0** | ✅ 6,549 train, 843 val, 2,608 test |

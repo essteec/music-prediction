@@ -8,7 +8,7 @@ Whether you are building a production content-based recommender, conducting Musi
 
 ## 🧭 1. Executive Summary & File Decision Matrix
 
-The dataset provides **4 pre-computed Top-100 kNN graph tables** and **8 raw embedding matrices**. Each similarity file serves a distinct musical facet:
+The dataset provides **4 pre-computed Top-250 kNN graph tables** and **8 raw embedding matrices**. Each similarity file serves a distinct musical facet:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -16,28 +16,29 @@ The dataset provides **4 pre-computed Top-100 kNN graph tables** and **8 raw emb
 ├──────────────────────────────┬──────────┬─────────────────────────────────────┬─────────────────────────────┤
 │ Parquet File in similarity/  │ Dim (D)  │ Core Modalities Fused               │ Best Used For               │
 ├──────────────────────────────┼──────────┼─────────────────────────────────────┼─────────────────────────────┤
-│ 1. knn_combined_top100.parquet│ 3,795-D  │ Neural Audio + Neural Lyric +       │ ⭐ Primary / General-purpose │
-│                              │          │ Spotify Audio + Vocal DSP +         │ recommendation across all   │
-│                              │          │ 50-D Genre Hybrid + Temporal        │ musical dimensions.         │
+│ 1. knn_combined_top250.parquet│ 3,795-D │ 73% Neural (Audio 38% + Lyric 35%)  │ ⭐ Primary / General-purpose │
+│                              │          │ + 27% Context & Vibe (Genre 11% +   │ recommendation across all   │
+│                              │          │ Spotify 8% + Temporal 4% + Vocal 4%)│ musical dimensions.         │
 ├──────────────────────────────┼──────────┼─────────────────────────────────────┼─────────────────────────────┤
-│ 2. knn_audio_top100.parquet  │ 1,664-D  │ LAION-CLAP + MERT-330M + VGGish    │ Pure sonic feel, timbre,    │
+│ 2. knn_audio_top250.parquet  │ 1,664-D  │ LAION-CLAP + MERT-330M + VGGish    │ Pure sonic feel, timbre,    │
 │                              │          │ (Mean-pooled over full song)        │ beat, instrumentation & DSP.│
 ├──────────────────────────────┼──────────┼─────────────────────────────────────┼─────────────────────────────┤
-│ 3. knn_lyric_top100.parquet  │ 2,048-D  │ Harrier-OSS-0.6B + E5-Large         │ Poetic themes, narrative,   │
+│ 3. knn_lyric_top250.parquet  │ 2,048-D  │ Harrier-OSS-0.6B + E5-Large         │ Poetic themes, narrative,   │
 │                              │          │ (32k context + cross-lingual)       │ storytelling & metaphors.   │
 ├──────────────────────────────┼──────────┼─────────────────────────────────────┼─────────────────────────────┤
-│ 4. knn_mood_top100.parquet   │ 59-D     │ Spotify Audio + GoEmotions +        │ Emotional vibe matching,    │
-│                              │          │ NRC Lexicon + Vocal Activity (VAD)  │ valence/energy continuity.  │
+│ 4. knn_mood_top250.parquet   │ 83-D     │ Unified Mood & Context              │ Mood, acoustic vibe, vocal  │
+│                              │          │ (Genre 40% + Spotify 30% +          │ warmth & era continuity.    │
+│                              │          │  Temporal 15% + Vocal DSP 15%)      │                             │
 └──────────────────────────────┴──────────┴─────────────────────────────────────┴─────────────────────────────┘
 ```
 
 > **⚡ Fast-Path vs. Dynamic Steering**:
-> - For **instant $O(1)$ lookups** (sub-millisecond latency), read directly from `similarity/knn_combined_top100.parquet` or `similarity/knn_mood_top100.parquet`.
+> - For **instant $O(1)$ lookups** (sub-millisecond latency), read directly from `similarity/knn_combined_top250.parquet` or `similarity/knn_mood_top250.parquet`.
 > - For **interactive UI sliders** (e.g., custom weights $w_a \cdot S_{\text{audio}} + w_l \cdot S_{\text{lyric}} + w_m \cdot S_{\text{mood}}$), compute dot products directly using the normalized `.npy` matrices in `embeddings/`.
 
 ---
 
-## 🎧 2. Audio Similarity Extraction & Optimal Fusion (`knn_audio_top100.parquet`)
+## 🎧 2. Audio Similarity Extraction & Optimal Fusion (`knn_audio_top250.parquet`)
 
 ### A. Extraction Methodology
 All 10,000 tracks were decoded from local Opus audio files using `librosa` / `ffmpeg` over **100% of their full song duration** (no 30-second truncation artifacts):
@@ -78,7 +79,7 @@ During our Leave-One-Group-Out (LOGO) ablation study on audio models, we evaluat
 
 ---
 
-## 📝 3. Lyric Similarity Extraction & Optimal Fusion (`knn_lyric_top100.parquet`)
+## 📝 3. Lyric Similarity Extraction & Optimal Fusion (`knn_lyric_top250.parquet`)
 
 ### A. Extraction Methodology
 All lyrics were cleaned to remove Genius scrapers' contributor metadata, headers (`[Chorus]`, `[Verse 1]`, `[Drop]`), and whitespace anomalies:
@@ -103,25 +104,22 @@ $$\mathbf{v}_{\text{lyric}} = \text{Normalize}\left( \left[ \text{Harrier}_{1024
 
 ---
 
-## 🎭 4. Mood & Emotion Similarity (`knn_mood_top100.parquet`)
+## 🎭 4. Unified Mood, Vibe & Context Similarity (`knn_mood_top250.parquet`)
 
-### A. Architecture (59-D)
-Unlike acoustic timbre or lyric vocabularies, musical **mood** is a continuous emotional landscape. The dedicated mood vector fuses three distinct signals:
+### A. Architecture (83-D)
+Unlike acoustic timbre or lyric vocabularies, musical **mood and vibe** represents a continuous emotional and stylistic landscape. Based on empirical LOGO ablation testing, English-only emotion classifiers (`GoEmotions 36-D`) were removed to eliminate zero-padding bias on non-English tracks, and macro/subgenre anchors (`Genre Hybrid 50-D`) plus historical context (`Temporal 10-D`) were fused into a unified **83-D** representation:
 
-1. **Spotify High-Level Descriptors (11-D):** `danceability`, `energy`, `valence`, `acousticness`, `instrumentalness`, `speechiness`, `liveness`, `mode`, `loudness_scaled`, `tempo_scaled`, `time_signature_scaled`.
-2. **RoBERTa GoEmotions & NRC EmoLex (36-D):**
-   - 28 fine-grained emotions from RoBERTa sequence classification (`admiration`, `amusement`, `anger`, `joy`, `love`, `sadness`, `grief`, `fear`, etc.).
-   - 8 NRC Lexicon emotion densities (`nrc_joy`, `nrc_sadness`, `nrc_trust`, `nrc_anticipation`, etc.).
-3. **Vocal Activity & Dynamics (12-D):**
-   - Silero VAD `vocal_ratio` and `has_vocals` binary flag.
-   - Librosa dynamics: `crest_factor`, integrated `lufs`, `onset_rate`, `spectral_contrast`, `zcr`, and `chroma_entropy`.
+1. **Genre Hybrid Vector (50-D - Weight: 40%):** 17-D Main + 17-D Subgenre Rollup + 16-D Latent SVD space.
+2. **Spotify High-Level Descriptors (11-D - Weight: 30%):** `danceability`, `energy`, `valence`, `acousticness`, `instrumentalness`, `speechiness`, `liveness`, `mode`, `loudness_scaled`, `tempo_scaled`, `time_signature_scaled`.
+3. **Temporal & Collab Context (10-D - Weight: 15%):** Release decade one-hots, collaboration flag, artist follower reach, track duration.
+4. **Vocal Activity & Dynamics (12-D - Weight: 15%):** Silero VAD vocal presence + Librosa dynamics (`crest_factor`, integrated `lufs`, `onset_rate`, `spectral_contrast`).
 
-**Final Mood Formula (59-D):**
-$$\mathbf{v}_{\text{mood}} = \text{Normalize}\left( \left[ \text{Spotify}_{11\text{d}} \;\|\; \text{Emotion}_{36\text{d}} \;\|\; \text{VocalDSP}_{12\text{d}} \right] \right)$$
+**Final Mood & Context Formula (83-D):**
+$$\mathbf{v}_{\text{mood\_83}} = \text{Normalize}\left( \left[ \sqrt{0.40}\,\mathbf{v}_{\text{genre\_50d}} \;\|\; \sqrt{0.30}\,\mathbf{v}_{\text{spotify\_11d}} \;\|\; \sqrt{0.15}\,\mathbf{v}_{\text{temporal\_10d}} \;\|\; \sqrt{0.15}\,\mathbf{v}_{\text{vocal\_12d}} \right] \right)$$
 
 ---
 
-## 🌐 5. Master Multimodal Similarity (`knn_combined_top100.parquet`)
+## 🌐 5. Master Multimodal Similarity (`knn_combined_top250.parquet`)
 
 #### A. The 50-D Hybrid Genre Representation
 Instead of naive bag-of-words tokenizers that split multi-word subgenres into fragments (e.g., splitting `"k-pop"` or `"corridos bélicos"`), the dataset incorporates a **3-tier hierarchical and latent hybrid genre representation**:
@@ -137,39 +135,39 @@ Instead of naive bag-of-words tokenizers that split multi-word subgenres into fr
 | Feature Block Evaluated | Remaining Dim | Overlap @10 | Overlap @50 | Vibe MAE @10 | Vibe Δ | Artist Agr @10 | Artist Δ | Impact Verdict | Action in Master Fusion |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Full Baseline Ensemble** | 3870-D | 100.0% | 100.0% | 0.1529 | 0.0000 | 17.18% | 0.00% | Reference | — |
-| **Without Neural Audio (1664-D)** | 2206-D | 86.4% | 90.2% | 0.1584 | `+0.0055` | 15.83% | `-1.35%` | **Essential Signal (Keep)** | **Included (1,664-D)** |
-| **Without Neural Lyric (2048-D)** | 1822-D | 92.5% | 95.1% | 0.1530 | `+0.0001` | 16.65% | `-0.53%` | **Moderate Signal (Keep)** | **Included (2,048-D)** |
-| **Without Spotify Audio (11-D)** | 3859-D | 74.2% | 81.3% | 0.1624 | `+0.0095` | 17.55% | `+0.37%` | **Essential Signal (Keep)** | **Included (11-D)** |
-| **Without Vocal DSP (12-D)** | 3858-D | 79.2% | 84.9% | 0.1568 | `+0.0039` | 16.91% | `-0.27%` | **Beneficial Signal (Keep)** | **Included (12-D)** |
-| **Without Genre Hybrid (50-D)** | 3820-D | 46.8% | 51.6% | 0.1494 | `-0.0035` | 8.64% | `-8.54%` | **Essential Signal (Keep)** | **Included (50-D)** |
-| **Without Temporal & Collab (10-D)**| 3860-D | 53.0% | 59.4% | 0.1498 | `-0.0030` | 15.49% | `-1.69%` | **Essential Signal (Keep)** | **Included (10-D)** |
+| **Without Neural Audio (1664-D)** | 2206-D | 86.4% | 90.2% | 0.1584 | `+0.0055` | 15.83% | `-1.35%` | **Essential Signal (Keep)** | **Included (1,664-D - 38%)** |
+| **Without Neural Lyric (2048-D)** | 1822-D | 92.5% | 95.1% | 0.1530 | `+0.0001` | 16.65% | `-0.53%` | **Moderate Signal (Keep)** | **Included (2,048-D - 35%)** |
+| **Without Spotify Audio (11-D)** | 3859-D | 74.2% | 81.3% | 0.1624 | `+0.0095` | 17.55% | `+0.37%` | **Essential Signal (Keep)** | **Included (11-D - 8%)** |
+| **Without Vocal DSP (12-D)** | 3858-D | 79.2% | 84.9% | 0.1568 | `+0.0039` | 16.91% | `-0.27%` | **Beneficial Signal (Keep)** | **Included (12-D - 4%)** |
+| **Without Genre Hybrid (50-D)** | 3820-D | 46.8% | 51.6% | 0.1494 | `-0.0035` | 8.64% | `-8.54%` | **Essential Signal (Keep)** | **Included (50-D - 11%)** |
+| **Without Temporal & Collab (10-D)**| 3860-D | 53.0% | 59.4% | 0.1498 | `-0.0030` | 15.49% | `-1.69%` | **Essential Signal (Keep)** | **Included (10-D - 4%)** |
 | **Without Lyric Structure (12-D)** | 3858-D | 83.1% | 87.6% | 0.1524 | `-0.0005` | 17.37% | `+0.19%` | **Marginal / Neutral** | **Excluded (Dropped)** |
 | **Without Linguistic & Language (27-D)** | 3843-D | 95.6% | 94.3% | 0.1524 | `-0.0004` | 17.19% | `+0.01%` | **Redundant (Query Filter)** | **Handled via Filter** |
-| **Without Emotion & Sentiment (36-D)**| 3834-D | 49.9% | 60.8% | 0.1455 | `-0.0073` | 21.28% | `+4.10%` | **Distinct / Noisy on Global** | **Isolated to Mood Graph** |
+| **Without Emotion & Sentiment (36-D)**| 3834-D | 49.9% | 60.8% | 0.1455 | `-0.0073` | 21.28% | `+4.10%` | **Distinct / Noisy on Global** | **Dropped (Language Disparity)** |
 
 ### C. Master Combined Vector Composition (Exact 3,795-D)
 
-$$\mathbf{v}_{\text{combined}} = \text{Normalize}\left( \left[ \mathbf{v}_{\text{audio\_1664d}} \;\|\; \mathbf{v}_{\text{lyric\_2048d}} \;\|\; \mathbf{v}_{\text{spotify\_11d}} \;\|\; \mathbf{v}_{\text{vocal\_12d}} \;\|\; \mathbf{v}_{\text{genre\_50d}} \;\|\; \mathbf{v}_{\text{temporal\_10d}} \right] \right) \in \mathbb{R}^{3795}$$
+$$\mathbf{v}_{\text{combined}} = \text{Normalize}\left( \left[ \sqrt{0.38}\,\mathbf{v}_{\text{audio\_1664d}} \;\|\; \sqrt{0.35}\,\mathbf{v}_{\text{lyric\_2048d}} \;\|\; \sqrt{0.11}\,\mathbf{v}_{\text{genre\_50d}} \;\|\; \sqrt{0.08}\,\mathbf{v}_{\text{spotify\_11d}} \;\|\; \sqrt{0.04}\,\mathbf{v}_{\text{temporal\_10d}} \;\|\; \sqrt{0.04}\,\mathbf{v}_{\text{vocal\_12d}} \right] \right) \in \mathbb{R}^{3795}$$
 
-- **Zero Zero-Padding Drift:** By routing Language ID to a boolean query filter and isolating fine-grained English emotion classifiers to `knn_mood_top100.parquet`, the global 3,795-D master representation remains clean and balanced across all languages and genres.
+- **Zero Zero-Padding Drift:** By routing Language ID to a boolean query filter and dropping fine-grained English emotion classifiers (which suffered from zero-padding disparity on non-English tracks per LOGO ablation), both the global 3,795-D master representation and the 83-D unified mood representation remain clean, robust, and balanced across all languages and genres.
 
 ---
 
 ## 🛠️ 6. Optimal Implementation Patterns
 
 ### Pattern 1: Instant Production Fast-Path ($O(1)$ Lookup)
-For real-time APIs or frontend apps, read the pre-computed Top-100 Parquet table directly:
+For real-time APIs or frontend apps, read the pre-computed Top-250 Parquet table directly:
 
 ```python
 import pandas as pd
 
 songs = pd.read_parquet('metadata/songs.parquet')
-knn_comb = pd.read_parquet('similarity/knn_combined_top100.parquet')
+knn_comb = pd.read_parquet('similarity/knn_combined_top250.parquet')
 
 def get_instant_recommendations(track_idx: int, top_k: int = 5):
     row = knn_comb.iloc[track_idx]
-    nb_indices = row['top100_neighbor_indices'][:top_k]
-    nb_sims = row['top100_similarities'][:top_k]
+    nb_indices = row['top250_neighbor_indices'][:top_k]
+    nb_sims = row['top250_similarities'][:top_k]
     
     recs = songs.iloc[nb_indices][['track_name', 'artist_names', 'main_genres', 'release_date']].copy()
     recs['similarity'] = nb_sims
@@ -301,7 +299,7 @@ The dataset includes 4 pre-computed 2D projection files (`umap_2d_audio.parquet`
 > - Playlist trajectory journey visualization
 > - Qualitative comparison between audio timbre space and lyric topic space
 > 
-> **Never** use 2D Euclidean distances as a quantitative substitute for true high-dimensional similarity. For quantitative metric distance or kNN search, always use the high-dimensional embedding arrays or the Top-100 Parquet tables.
+> **Never** use 2D Euclidean distances as a quantitative substitute for true high-dimensional similarity. For quantitative metric distance or kNN search, always use the high-dimensional embedding arrays or the Top-250 Parquet tables.
 
 ---
 
@@ -310,14 +308,14 @@ The dataset includes 4 pre-computed 2D projection files (`umap_2d_audio.parquet`
 ```
 spotify-10k-music-features/
 ├── similarity/
-│   ├── knn_combined_top100.parquet  (3,795-D Master Multi-Modal Top-100 Graph)
-│   ├── knn_audio_top100.parquet     (1,664-D Pure Acoustic Top-100 Graph)
-│   ├── knn_lyric_top100.parquet     (2,048-D Lyrical Semantic Top-100 Graph)
-│   ├── knn_mood_top100.parquet      (59-D Mood & Emotional Vibe Top-100 Graph)
+│   ├── knn_combined_top250.parquet  (3,795-D Master Multi-Modal Top-250 Graph)
+│   ├── knn_audio_top250.parquet     (1,664-D Pure Acoustic Top-250 Graph)
+│   ├── knn_lyric_top250.parquet     (2,048-D Lyrical Semantic Top-250 Graph)
+│   ├── knn_mood_top250.parquet      (83-D Unified Mood & Context Top-250 Graph)
 │   ├── umap_2d_combined.parquet     (2D Projection Coordinates - Multimodal)
 │   ├── umap_2d_audio.parquet        (2D Projection Coordinates - Audio Space)
 │   ├── umap_2d_lyric.parquet        (2D Projection Coordinates - Lyric Space)
-│   └── umap_2d_mood.parquet         (2D Projection Coordinates - Mood Space)
+│   └── umap_2d_mood.parquet         (2D Projection Coordinates - Unified Mood & Context Space: 83-D)
 │
 ├── embeddings/
 │   ├── audio/                       (CLAP 512d, MERT 1024d, VGGish 128d, PANNs 2048d, Mel 512d)

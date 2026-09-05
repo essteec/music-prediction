@@ -54,7 +54,7 @@ spotify-10k-music-features/
 │   │
 │   └── metadata/
 │       ├── spotify_audio_11d.npy       (10000, 11, float32 - Normalized Spotify audio & vibe descriptors)
-│       ├── emotion_sentiment_36d.npy   (10000, 36, float32 - 28 GoEmotions + 8 NRC emotion densities)
+│       ├── emotion_sentiment_36d.npy   (10000, 36, float32 - 28 GoEmotions [english only] + 8 NRC emotion densities)
 │       ├── vocal_dsp_12d.npy           (10000, 12, float32 - Vocal ratio + 10 Librosa dynamics)
 │       ├── lyric_stats_12d.npy         (10000, 12, float32 - TTR, readability, VADER, structure)
 │       ├── genre_hybrid_50d.npy        (10000, 50, float32 - 17-D Main + 17-D Sub Rollup + 16-D Latent SVD)
@@ -63,13 +63,13 @@ spotify-10k-music-features/
 │       └── bertopic_32d.npy            (10000, 32, float32 - 32-D Topic cluster one-hot vectors - Archival)
 │
 ├── similarity/
-│   ├── knn_audio_top100.parquet        (10,000 × 5 - Top-100 nearest neighbors for Acoustic Sound: 1664-D)
-│   ├── knn_lyric_top100.parquet        (10,000 × 5 - Top-100 nearest neighbors for Lyric Storytelling: 2048-D)
-│   ├── knn_mood_top100.parquet         (10,000 × 5 - Top-100 nearest neighbors for Mood & Emotion: 59-D)
-│   ├── knn_combined_top100.parquet     (10,000 × 5 - Top-100 nearest neighbors for Master Multimodal: 3795-D)
+│   ├── knn_audio_top250.parquet        (10,000 × 5 - Top-250 nearest neighbors for Acoustic Sound: 1664-D)
+│   ├── knn_lyric_top250.parquet        (10,000 × 5 - Top-250 nearest neighbors for Lyric Storytelling: 2048-D)
+│   ├── knn_mood_top250.parquet         (10,000 × 5 - Top-250 nearest neighbors for Unified Mood & Context: 83-D)
+│   ├── knn_combined_top250.parquet     (10,000 × 5 - Top-250 nearest neighbors for Master Multimodal: 3795-D)
 │   ├── umap_2d_audio.parquet           (10,000 × 4 - 2D Visualization coordinates for Acoustic Space)
 │   ├── umap_2d_lyric.parquet           (10,000 × 4 - 2D Visualization coordinates for Lyric Space)
-│   ├── umap_2d_mood.parquet            (10,000 × 4 - 2D Visualization coordinates for Mood Space)
+│   ├── umap_2d_mood.parquet            (10,000 × 4 - 2D Visualization coordinates for Mood Space: 83-D)
 │   └── umap_2d_combined.parquet        (10,000 × 4 - 2D Visualization coordinates for Multimodal Space)
 │
 ├── splits/
@@ -87,20 +87,23 @@ spotify-10k-music-features/
 
 ## 2. Similarity Graphs & 2D Manifolds (`similarity/`)
 
-### A. Pre-Computed Top-100 kNN Matrices
-- **`knn_audio_top100.parquet` (1664-D)**: Fused `CLAP (512-D) + MERT-330M (1024-D) + VGGish (128-D)`.
-- **`knn_lyric_top100.parquet` (2048-D)**: Fused `Harrier-OSS-v1-0.6B (1024-D) + Multilingual E5-Large (1024-D)`.
-- **`knn_mood_top100.parquet` (59-D)**: Fused `Spotify Audio (11-D) + GoEmotions/NRC (36-D) + Vocal DSP (12-D)`.
-- **`knn_combined_top100.parquet` (3795-D)**: Master fusion of Audio (1664-D), Lyric (2048-D), Spotify Audio (11-D), Vocal DSP (12-D), Genre Hybrid (50-D: 17 Main + 17 Sub Rollup + 16 Latent SVD), and Temporal Context (10-D).
+### A. Pre-Computed Top-250 kNN Matrices
+
+- **`knn_audio_top250.parquet` (1664-D)**: Fused `CLAP (512-D) + MERT-330M (1024-D) + VGGish (128-D)`.
+- **`knn_lyric_top250.parquet` (2048-D)**: Fused `Harrier-OSS-v1-0.6B (1024-D) + Multilingual E5-Large (1024-D)`.
+- **`knn_mood_top250.parquet` (83-D)**: Unified Mood, Vibe & Context fused: `Genre Hybrid (50-D: 40%) + Spotify Audio (11-D: 30%) + Temporal (10-D: 15%) + Vocal DSP (12-D: 15%)`.
+- **`knn_combined_top250.parquet` (3795-D)**: Master multimodal fusion: 73% Neural (`Audio 38% + Lyric 35%`) + 27% Context (`Genre 11% + Spotify 8% + Temporal 4% + Vocal 4%`).
 
 ### B. 2D UMAP Visualization Projections
+
 - **`umap_2d_audio.parquet`**, **`umap_2d_lyric.parquet`**, **`umap_2d_mood.parquet`**, **`umap_2d_combined.parquet`**:
   
-> **Interpretation Disclaimer**: The 2D coordinates in `similarity/umap_2d_*.parquet` are qualitative non-linear dimensionality reduction projections intended for visual exploration, genre cluster maps, and playlist trajectory plotting. For quantitative metric distance or true mathematical similarity, always use the high-dimensional embeddings or the Top-100 kNN graph tables.
+> **Interpretation Disclaimer**: The 2D coordinates in `similarity/umap_2d_*.parquet` are qualitative non-linear dimensionality reduction projections intended for visual exploration, genre cluster maps, and playlist trajectory plotting. For quantitative metric distance or true mathematical similarity, always use the high-dimensional embeddings or the Top-250 kNN graph tables.
 
 ---
 
 ## 3. Audio Features (`dsp_librosa.parquet`)
+
 - **Energy & Dynamics (7 dims):** `rms_mean`, `rms_std`, `rms_max`, `rms_q10`, `rms_q90`, `crest_factor`, `lufs_integrated` (BS.1770 compliant).
 - **Rhythm (5 dims):** `tempo_librosa`, `onset_rate`, `onset_strength_mean`, `onset_strength_std`, `onset_strength_max`.
 - **Timbre (58 dims):** `mfcc_1_mean` to `mfcc_20_std` (40 dims), `spectral_centroid_mean/std`, `spectral_bandwidth_mean/std`, `spectral_flatness_mean`, `spectral_rolloff_mean`, `spectral_contrast_mean/std`, `zcr_mean/std`.
@@ -110,5 +113,6 @@ spotify-10k-music-features/
 ---
 
 ## 4. Language & Script Taxonomy (`language_id.parquet`)
+
 - **Primary / Secondary Codes:** `primary_language` (ISO 639-1), `secondary_language`, `lang_confidence`, `primary_script`.
 - **Explicit Language Indicators:** `is_english`, `is_spanish`, `is_hindi_any`, `is_hindi_devanagari`, `is_hindi_romanized`, `is_indonesian`, `is_japanese`, `is_chinese`, `is_dutch`, `is_german`, `is_russian`, `is_italian`, `is_french`, `is_arabic`, `is_portuguese`, `is_turkish`, `is_korean`, `is_tagalog`, `is_scandinavian` (Swedish, Norwegian, Danish, Finnish), `is_punjabi`, `is_tamil`, `is_telugu`, `is_polish`, `is_multilingual`.

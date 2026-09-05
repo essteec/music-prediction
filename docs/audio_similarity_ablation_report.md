@@ -27,7 +27,7 @@ This study rigorously evaluates the individual contribution of each audio repres
 - **Distinct but Harmful / Noisy (Drop Candidate):** Low overlap (high drift) paired with positive/neutral deltas ($\Delta \ge 0$), meaning the model pulls neighbors away from genuine musical/genre matches.
 - **Redundant:** High overlap ($\ge 95\%$) with near-zero delta, indicating other deep models already capture this information.
 
-## Final Architectural Decision for `knn_audio_top100.parquet`
+## Final Architectural Decision for `knn_audio_top250.parquet`
 
 Based on the empirical findings:
 - **CLAP (512-D), MERT-330M (1024-D), and VGGish (128-D)** are verified beneficial representations whose removal degrades recommendation quality.

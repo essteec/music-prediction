@@ -9,7 +9,7 @@ This document lists all curated files included in the Kaggle dataset upload pack
 > **Note on CSVs**: The `.csv` versions of the metadata tables are included alongside the optimized `.parquet` files to enable instant visual table rendering and column filtering in the Kaggle web UI.
 
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `metadata/songs.parquet` | Parquet | (10000, 32) | 9.65 MB | Primary Spotify track metadata (titles, artists, genres, popularity, release date, tempo, valence, etc.) |
 | `metadata/artists.parquet` | Parquet | (5015, 6) | 0.30 MB | Unique artist catalog (artist ID, name, followers, popularity, genres) |
 | `metadata/genres.parquet` | Parquet | (1276, 2) | 0.02 MB | 1,276 Subgenre to 17 Main Genre taxonomy mapping table |
@@ -22,14 +22,16 @@ This document lists all curated files included in the Kaggle dataset upload pack
 ## 🎵 2. Extracted Tabular Features (`features/`)
 
 ### Audio Acoustic Descriptors (`features/audio/`)
+
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `features/audio/dsp_librosa.parquet` | Parquet | (10000, 91) | 5.29 MB | 88 Librosa acoustic descriptors (MFCCs 1–20 mean/std, spectral contrast/rolloff/flatness, chroma pitch, tonnetz, onset rate, tempo, LUFS integrated loudness, stereo width) |
 | `features/audio/vad.parquet` | Parquet | (10000, 5) | 0.39 MB | Silero Vocal Activity Detection (vocal duration in seconds, vocal ratio 0–1, vocal presence flag) |
 
 ### Lyric NLP Descriptors (`features/lyric/`)
+
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `features/lyric/language_id.parquet` | Parquet | (10000, 34) | 0.36 MB | 34 Language & script flags (Devanagari Hindi, Romanized Hindi, Indonesian, Japanese, Korean, Chinese, European, Turkish, etc.) |
 | `features/lyric/lyric_stats.parquet` | Parquet | (10000, 30) | 1.04 MB | Lexical statistics (TTR, Root-TTR, MTLD, HD-D, Hapax legomena ratio, Flesch reading ease, VADER compound/pos/neg, NRC EmoLex 8 emotions, YAKE top keywords JSON) |
 | `features/lyric/go_emotions.parquet` | Parquet | (10000, 31) | 0.73 MB | 28 Fine-grained RoBERTa emotion probability scores on English tracks (`admiration`, `joy`, `love`, `sadness`, `anger`, `optimism`, etc.) |
@@ -37,13 +39,15 @@ This document lists all curated files included in the Kaggle dataset upload pack
 | `features/lyric/bertopic_topic_labels.json` | JSON | 32 topics | 0.01 MB | Topic names, document counts, and top c-TF-IDF keyword labels per topic |
 
 ### Metadata Contextual Features (`features/metadata/`)
+
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `features/metadata/derived.parquet` | Parquet | (10000, 17) | 0.41 MB | Structural features (release decade, collaboration flag, total artist followers log, genre counts, key/mode name) |
 
 ### Acoustic Fingerprints & Recognition (`features/qc/`)
+
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `features/qc/chromaprint_fingerprints.parquet` | Parquet | (10000, 6) | 35.57 MB | AcoustID Chromaprint raw base64 fingerprints & duplicate clusters for Shazam-like audio recognition |
 
 ---
@@ -51,8 +55,9 @@ This document lists all curated files included in the Kaggle dataset upload pack
 ## 🧠 3. High-Dimensional Embeddings & Normalized Matrices (`embeddings/`)
 
 ### Deep Audio Embeddings (`embeddings/audio/`)
+
 | File Path | Format | Shape / Dtype | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `embeddings/audio/clap_512d.npy` | NumPy | (10000, 512) float32 | 19.53 MB | LAION-CLAP zero-shot text-audio full-song mean embeddings (48 kHz mono) |
 | `embeddings/audio/mert_330m_embeddings_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | MERT-v1-330M self-supervised music transformer full-song mean embeddings (24 kHz mono) |
 | `embeddings/audio/mert_330m_all_chunks.npz` | NPZ | (74559, 1024) float16 | 167.05 MB | MERT-v1-330M CSR-indexed tensor of all consecutive 30s chunk representations |
@@ -63,15 +68,17 @@ This document lists all curated files included in the Kaggle dataset upload pack
 | `embeddings/audio/mel_stats_embeddings_512d.npy` | NumPy | (10000, 512) float32 | 19.53 MB | Mel-frequency spectral statistics embeddings |
 
 ### Deep Lyric Embeddings (`embeddings/lyric/`)
+
 | File Path | Format | Shape / Dtype | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `embeddings/lyric/harrier_embeddings_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | Microsoft Harrier-OSS-v1-0.6B embeddings (32k context, full song lyrics without truncation) |
 | `embeddings/lyric/multilingual_e5_large_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | Multilingual-E5-Large embeddings (Pilot benchmark winner, nDCG@10: 0.3001) |
 | `embeddings/lyric/bge_m3_1024d.npy` | NumPy | (10000, 1024) float32 | 39.06 MB | BAAI/BGE-M3 embeddings (8,192-token document context, 100+ languages) |
 
 ### Normalized Tabular Feature Matrices (`embeddings/metadata/`)
+
 | File Path | Format | Shape / Dtype | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `embeddings/metadata/genre_hybrid_50d.npy` | NumPy | (10000, 50) float32 | 1.91 MB | Hybrid Genre Representation (17-D Main + 17-D Sub Rollup + 16-D Latent SVD) |
 | `embeddings/metadata/spotify_audio_11d.npy` | NumPy | (10000, 11) float32 | 0.42 MB | Normalized Spotify audio descriptors (danceability, valence, energy, tempo, loudness, etc.) |
 | `embeddings/metadata/vocal_dsp_12d.npy` | NumPy | (10000, 12) float32 | 0.46 MB | Normalized Vocal Activity (VAD ratio) + 10 Librosa dynamic descriptors |
@@ -86,22 +93,22 @@ This document lists all curated files included in the Kaggle dataset upload pack
 ## 🔍 4. Similarity Graphs & 2D Map Projections (`similarity/`)
 
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
-| `similarity/knn_combined_top100.parquet` | Parquet | (10000, 5) | 9.49 MB | Pre-computed Top-100 nearest neighbors for Master Multimodal Fusion (3,795-D: Audio + Lyric + Spotify + Vocal DSP + Genre + Temporal) |
-| `similarity/knn_audio_top100.parquet` | Parquet | (10000, 5) | 9.32 MB | Pre-computed Top-100 nearest neighbors for Pure Acoustic Sound (1,664-D: CLAP + MERT-330M + VGGish) |
-| `similarity/knn_lyric_top100.parquet` | Parquet | (10000, 5) | 9.19 MB | Pre-computed Top-100 nearest neighbors for Lyric Storytelling (2,048-D: Harrier-0.6B + Multilingual-E5) |
-| `similarity/knn_mood_top100.parquet` | Parquet | (10000, 5) | 9.49 MB | Pre-computed Top-100 nearest neighbors for Mood & Emotion (59-D: Spotify 11-D + Emotion 36-D + Vocal DSP 12-D) |
+| --- | --- | --- | --- | --- |
+| `similarity/knn_combined_top250.parquet` | Parquet | (10000, 5) | 22.30 MB | Pre-computed Top-250 nearest neighbors for Master Multimodal Fusion (3,795-D: 73% Neural + 27% Mood & Context) |
+| `similarity/knn_audio_top250.parquet` | Parquet | (10000, 5) | 22.03 MB | Pre-computed Top-250 nearest neighbors for Pure Acoustic Sound (1,664-D: CLAP + MERT-330M + VGGish) |
+| `similarity/knn_lyric_top250.parquet` | Parquet | (10000, 5) | 21.64 MB | Pre-computed Top-250 nearest neighbors for Lyric Storytelling (2,048-D: Harrier-0.6B + Multilingual-E5) |
+| `similarity/knn_mood_top250.parquet` | Parquet | (10000, 5) | 22.68 MB | Pre-computed Top-250 nearest neighbors for Unified Mood & Context (83-D: Genre 40% + Spotify 30% + Temporal 15% + Vocal 15%) |
 | `similarity/umap_2d_combined.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D Multimodal map projection coordinates (`proj_x`, `proj_y`) for visual mapping |
 | `similarity/umap_2d_audio.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D Audio map projection coordinates (`proj_x`, `proj_y`) for visual mapping |
 | `similarity/umap_2d_lyric.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D Lyric map projection coordinates (`proj_x`, `proj_y`) for visual mapping |
-| `similarity/umap_2d_mood.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D Mood map projection coordinates (`proj_x`, `proj_y`) for visual mapping |
+| `similarity/umap_2d_mood.parquet` | Parquet | (10000, 4) | 0.41 MB | 2D Mood map projection coordinates (`proj_x`, `proj_y`) for visual mapping (83-D) |
 
 ---
 
 ## ⚖️ 5. Evaluation Splits (`splits/`)
 
 | File Path | Format | Shape | Size | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `splits/artist_grouped_5fold.parquet` | Parquet | (10000, 4) | 0.05 MB | 5-Fold GroupKFold by `artist_id` for zero-leakage cross-validation evaluation |
 | `splits/temporal_split.parquet` | Parquet | (10000, 4) | 0.05 MB | Chronological split: Train (≤2022, 6,549 songs), Val (2023, 843 songs), Test (2024–2025, 2,608 songs) |
 
@@ -110,9 +117,7 @@ This document lists all curated files included in the Kaggle dataset upload pack
 ## 📋 6. Manifests & Documentation
 
 | File Path | Format | Size | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `track_ids.npy` | NumPy (10000,) | 0.08 MB | Master Spotify track ID array (0 to 9,999) ensuring 1:1 alignment across all files |
 | `manifests/extraction_manifest.json` | JSON | 0.02 MB | Full schema, column list, shapes, and extraction metadata |
 | `manifests/checksums.json` | JSON | 0.01 MB | SHA-256 cryptographic checksums for data integrity verification |
-| `DATA_DICTIONARY.md` | Markdown | 0.01 MB | Detailed column-by-column documentation and metric definitions |
-| `KAGGLE_README.md` | Markdown | 0.01 MB | Dataset card, citations, methodology, and quickstart documentation |

@@ -10,7 +10,7 @@ nb = nbf.v4.new_notebook()
 cells = []
 
 # Title
-cells.append(nbf.v4.new_markdown_cell("""# 🌍 Global Cultural & Multilingual Lyric Analysis
+cells.append(nbf.v4.new_markdown_cell("""# Global Cultural & Multilingual Lyric Analysis
 ### Cross-Lingual Semantic Space, Emotional Patterns, Lexical Diversity, and Thematic Clusters Across 10,000 Songs
 
 This notebook explores the rich **multilingual NLP descriptors** and **deep neural embeddings** included in the Spotify 10k dataset. We analyze lyric storytelling patterns across **35 language/script categories** (including English, Spanish, Hindi Devanagari & Romanized Hinglish, Korean, Japanese, Portuguese, Indonesian, Turkish, French, etc.) using:

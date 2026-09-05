@@ -52,7 +52,13 @@ def main():
 
     for fp_str in sorted(all_files):
         fp = Path(fp_str)
-        if fp.suffix not in ('.parquet', '.npy', '.npz', '.json', '.csv') or 'checkpoint' in fp.name or 'pilot' in fp.parts:
+        if (
+            fp.suffix not in ('.parquet', '.npy', '.npz', '.json', '.csv')
+            or 'checkpoint' in fp.name
+            or 'pilot' in fp.parts
+            or 'copy' in fp.name
+            or 'extraction_logs' in fp.parts
+        ):
             continue
 
         rel_path = str(fp.relative_to(DATA_DIR))

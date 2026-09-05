@@ -1,13 +1,15 @@
 """
-Build Top-100 kNN Graph and 2D UMAP Projection for Mood, Emotion, and Acoustic Vibe.
+Build Top-250 kNN Graph and 2D UMAP Projection for Unified Mood, Vibe & Context.
 
-Input Sources:
-- data/embeddings/metadata/spotify_audio_11d.npy
-- data/embeddings/metadata/emotion_sentiment_36d.npy
-- data/embeddings/metadata/vocal_dsp_12d.npy
+Weights:
+- Genre Hybrid (50-D): 40%
+- Spotify Audio (11-D): 30%
+- Temporal & Collab (10-D): 15%
+- Vocal & DSP Dynamics (12-D): 15%
+Total: 83-D
 
 Outputs:
-- data/similarity/knn_mood_top100.parquet
+- data/similarity/knn_mood_top250.parquet
 - data/similarity/umap_2d_mood.parquet
 """
 
@@ -27,7 +29,7 @@ def normalize_tensor(t: torch.Tensor) -> torch.Tensor:
     norms = torch.norm(t, p=2, dim=1, keepdim=True).clamp(min=1e-12)
     return t / norms
 
-def compute_top_k(tensor: torch.Tensor, k: int = 100, device: str = "cuda") -> tuple:
+def compute_top_k(tensor: torch.Tensor, k: int = 250, device: str = "cuda") -> tuple:
     t_cuda = tensor.to(device)
     n = t_cuda.shape[0]
     top_indices = np.zeros((n, k), dtype=np.int32)
@@ -45,7 +47,7 @@ def compute_top_k(tensor: torch.Tensor, k: int = 100, device: str = "cuda") -> t
         
     return top_indices, top_sims
 
-def save_knn_parquet(output_path: Path, spotify_ids: list, top_indices: np.ndarray, top_sims: np.ndarray):
+def save_knn_parquet(output_path: Path, spotify_ids: list, top_indices: np.ndarray, top_sims: np.ndarray, k: int = 250):
     n = len(spotify_ids)
     spotify_ids_arr = np.array(spotify_ids, dtype=object)
     
@@ -56,9 +58,9 @@ def save_knn_parquet(output_path: Path, spotify_ids: list, top_indices: np.ndarr
     table_dict = {
         'row_idx': np.arange(n, dtype=np.int32),
         'track_id': spotify_ids,
-        'top100_neighbor_indices': neighbor_indices,
-        'top100_neighbor_track_ids': neighbor_ids,
-        'top100_similarities': similarities
+        f'top{k}_neighbor_indices': neighbor_indices,
+        f'top{k}_neighbor_track_ids': neighbor_ids,
+        f'top{k}_similarities': similarities
     }
     
     df_out = pd.DataFrame(table_dict)
@@ -91,27 +93,36 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("\n" + "="*75)
-    print(f"BUILDING TOP-100 MOOD KNN MATRIX & 2D UMAP ({device})")
+    print(f"BUILDING TOP-250 UNIFIED MOOD & CONTEXT KNN MATRIX & 2D UMAP ({device})")
     print(f"Total Tracks: {n_songs:,}")
     print("="*75 + "\n")
 
     # Load component matrices
     print("Loading normalized metadata matrices...")
-    t_spotify = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "spotify_audio_11d.npy").astype(np.float32)))
-    t_emotion = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "emotion_sentiment_36d.npy").astype(np.float32)))
-    t_vocal   = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "vocal_dsp_12d.npy").astype(np.float32)))
+    t_genre    = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "genre_hybrid_50d.npy").astype(np.float32)))
+    t_spotify  = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "spotify_audio_11d.npy").astype(np.float32)))
+    t_temporal = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "temporal_collab_10d.npy").astype(np.float32)))
+    t_vocal    = normalize_tensor(torch.from_numpy(np.load(META_EMB_DIR / "vocal_dsp_12d.npy").astype(np.float32)))
 
-    # Fused Mood & Vibe Representation (59-D)
-    fused_mood = normalize_tensor(torch.cat([t_spotify, t_emotion, t_vocal], dim=1))
-    print(f"Fused Mood & Vibe representation shape: {fused_mood.shape}")
+    # Fused Unified Mood, Vibe & Context Representation (83-D)
+    # Weights: Genre 40%, Spotify 30%, Temporal 15%, Vocal 15%
+    mood_blocks = [
+        np.sqrt(0.40) * t_genre,
+        np.sqrt(0.30) * t_spotify,
+        np.sqrt(0.15) * t_temporal,
+        np.sqrt(0.15) * t_vocal
+    ]
+    fused_mood = normalize_tensor(torch.cat(mood_blocks, dim=1))
+    print(f"Unified Mood & Context representation shape: {fused_mood.shape}")
+    assert fused_mood.shape[1] == 83, f"Expected 83-D, got {fused_mood.shape[1]}-D"
 
-    # Compute Top-100 kNN
-    print("\n[1/2] Computing Top-100 Mood & Vibe Graph...")
-    mood_top100_idx, mood_top100_sims = compute_top_k(fused_mood, k=100, device=device)
-    save_knn_parquet(SIM_DIR / "knn_mood_top100.parquet", spotify_ids, mood_top100_idx, mood_top100_sims)
+    # Compute Top-250 kNN
+    print("\n[1/2] Computing Top-250 Unified Mood & Context Graph...")
+    mood_top_idx, mood_top_sims = compute_top_k(fused_mood, k=250, device=device)
+    save_knn_parquet(SIM_DIR / "knn_mood_top250.parquet", spotify_ids, mood_top_idx, mood_top_sims, k=250)
 
     # Compute 2D UMAP
-    print("\n[2/2] Computing 2D Mood UMAP Map...")
+    print("\n[2/2] Computing 2D Unified Mood UMAP Map...")
     compute_and_save_umap(SIM_DIR / "umap_2d_mood.parquet", spotify_ids, fused_mood)
 
     print("\n" + "="*75)

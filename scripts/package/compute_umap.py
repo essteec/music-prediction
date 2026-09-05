@@ -57,52 +57,68 @@ def main():
     has_lyrics = (np.linalg.norm(harrier, axis=1, keepdims=True) > 1e-6).astype(np.float32)
     lyric_fused = l2_norm(np.concatenate([l2_norm(harrier), l2_norm(e5)], axis=1)) * has_lyrics
 
-    # 3. Mood (59-D)
-    print("Loading Mood Matrices (Spotify 11 + Emotion 36 + Vocal DSP 12)...")
-    t_spotify = np.load(META_EMB_DIR / "spotify_audio_11d.npy")
-    t_emotion = np.load(META_EMB_DIR / "emotion_sentiment_36d.npy")
-    t_vocal   = np.load(META_EMB_DIR / "vocal_dsp_12d.npy")
-    mood_fused = l2_norm(np.concatenate([l2_norm(t_spotify), l2_norm(t_emotion), l2_norm(t_vocal)], axis=1))
+    # 3. Unified Mood, Vibe & Context (83-D)
+    # Weights: Genre 40%, Spotify 30%, Temporal 15%, Vocal 15%
+    print("Loading Unified Mood & Context Matrices (Genre 50 + Spotify 11 + Temporal 10 + Vocal 12 -> 83-D)...")
+    t_genre    = l2_norm(np.load(META_EMB_DIR / "genre_hybrid_50d.npy"))
+    t_spotify  = l2_norm(np.load(META_EMB_DIR / "spotify_audio_11d.npy"))
+    t_temporal = l2_norm(np.load(META_EMB_DIR / "temporal_collab_10d.npy"))
+    t_vocal    = l2_norm(np.load(META_EMB_DIR / "vocal_dsp_12d.npy"))
+
+    mood_fused = l2_norm(np.concatenate([
+        np.sqrt(0.40) * t_genre,
+        np.sqrt(0.30) * t_spotify,
+        np.sqrt(0.15) * t_temporal,
+        np.sqrt(0.15) * t_vocal
+    ], axis=1))
+    print(f"  Mood & Context Dimension: {mood_fused.shape[1]}-D")
+    assert mood_fused.shape[1] == 83, f"Expected 83-D, got {mood_fused.shape[1]}-D"
 
     # 4. Master Combined (3795-D)
+    # Weights: Audio 38%, Lyric 35%, Genre 11%, Spotify 8%, Temporal 4%, Vocal 4%
     print("Loading Master Combined Representations (3795-D)...")
-    t_genre    = l2_norm(np.load(META_EMB_DIR / "genre_hybrid_50d.npy"))
-    t_temporal = l2_norm(np.load(META_EMB_DIR / "temporal_collab_10d.npy"))
-
     combined_fused = l2_norm(np.concatenate([
-        audio_fused,
-        lyric_fused,
-        l2_norm(t_spotify),
-        l2_norm(t_vocal),
-        t_genre,
-        t_temporal
+        np.sqrt(0.38) * audio_fused,
+        np.sqrt(0.35) * lyric_fused,
+        np.sqrt(0.11) * t_genre,
+        np.sqrt(0.08) * t_spotify,
+        np.sqrt(0.04) * t_temporal,
+        np.sqrt(0.04) * t_vocal
     ], axis=1))
     print(f"  Master Multimodal Dimension: {combined_fused.shape[1]}-D")
     assert combined_fused.shape[1] == 3795, f"Expected 3795-D, got {combined_fused.shape[1]}-D"
 
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--only_combined", action="store_true", help="Compute only umap_2d_combined.parquet")
+    parser.add_argument("--only_mood_and_combined", action="store_true", help="Compute only mood and combined")
+    args = parser.parse_args()
+
     # Compute 2D Projections
-    print("\n[1/4] Computing 2D Projection for Audio Space...")
-    a_2d = compute_2d_projection(audio_fused)
-    pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(a_2d[:, 0], 3), 'proj_y': np.round(a_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_audio.parquet", index=False)
-    print(f"  -> Saved: {SIM_DIR / 'umap_2d_audio.parquet'}")
+    if not args.only_combined and not args.only_mood_and_combined:
+        print("\n[1/4] Computing 2D Projection for Audio Space...")
+        a_2d = compute_2d_projection(audio_fused)
+        pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(a_2d[:, 0], 3), 'proj_y': np.round(a_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_audio.parquet", index=False)
+        print(f"  -> Saved: {SIM_DIR / 'umap_2d_audio.parquet'}")
 
-    print("\n[2/4] Computing 2D Projection for Lyric Space...")
-    l_2d = compute_2d_projection(lyric_fused)
-    pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(l_2d[:, 0], 3), 'proj_y': np.round(l_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_lyric.parquet", index=False)
-    print(f"  -> Saved: {SIM_DIR / 'umap_2d_lyric.parquet'}")
+        print("\n[2/4] Computing 2D Projection for Lyric Space...")
+        l_2d = compute_2d_projection(lyric_fused)
+        pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(l_2d[:, 0], 3), 'proj_y': np.round(l_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_lyric.parquet", index=False)
+        print(f"  -> Saved: {SIM_DIR / 'umap_2d_lyric.parquet'}")
 
-    print("\n[3/4] Computing 2D Projection for Mood & Vibe Space...")
-    m_2d = compute_2d_projection(mood_fused)
-    pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(m_2d[:, 0], 3), 'proj_y': np.round(m_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_mood.parquet", index=False)
-    print(f"  -> Saved: {SIM_DIR / 'umap_2d_mood.parquet'}")
+    if not args.only_combined:
+        print("\n[3/4] Computing 2D Projection for Unified Mood & Context Space (83-D)...")
+        m_2d = compute_2d_projection(mood_fused)
+        pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(m_2d[:, 0], 3), 'proj_y': np.round(m_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_mood.parquet", index=False)
+        print(f"  -> Saved: {SIM_DIR / 'umap_2d_mood.parquet'}")
 
-    print("\n[4/4] Computing 2D Projection for Master Multimodal Space...")
+    print("\n[4/4] Computing 2D Projection for Master Multimodal Space (Weighted 73% Neural / 27% Context)...")
     c_2d = compute_2d_projection(combined_fused)
     pd.DataFrame({'row_idx': np.arange(n_songs, dtype=np.int32), 'track_id': spotify_ids, 'proj_x': np.round(c_2d[:, 0], 3), 'proj_y': np.round(c_2d[:, 1], 3)}).to_parquet(SIM_DIR / "umap_2d_combined.parquet", index=False)
     print(f"  -> Saved: {SIM_DIR / 'umap_2d_combined.parquet'}")
 
     print("\n" + "="*75)
-    print("ALL 4 2D PROJECTIONS GENERATED AND SAVED SUCCESSFULLY!")
+    print("PROJECTION COMPUTATION COMPLETED SUCCESSFULLY!")
     print("="*75 + "\n")
 
 if __name__ == "__main__":

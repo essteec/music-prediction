@@ -128,8 +128,8 @@ def main():
     print("AUDITING ALL DATASET FEATURES & EMBEDDINGS (PARQUET & NUMPY)")
     print("="*80 + "\n")
     
-    p_files = sorted([p for p in DATA_DIR.glob("**/*.parquet") if "checkpoint" not in p.name and "pilot" not in str(p)])
-    n_files = sorted([p for p in DATA_DIR.glob("**/*.npy") if "checkpoint" not in p.name and "pilot" not in str(p)])
+    p_files = sorted([p for p in DATA_DIR.glob("**/*.parquet") if "checkpoint" not in p.name and "pilot" not in str(p) and "copy" not in p.name and "extraction_logs" not in p.parts])
+    n_files = sorted([p for p in DATA_DIR.glob("**/*.npy") if "checkpoint" not in p.name and "pilot" not in str(p) and "copy" not in p.name and "extraction_logs" not in p.parts])
     
     print(f"Found {len(p_files)} Parquet tables and {len(n_files)} NumPy feature files.\n")
     

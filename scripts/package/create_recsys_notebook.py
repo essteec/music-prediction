@@ -10,13 +10,13 @@ nb = nbf.v4.new_notebook()
 cells = []
 
 # Title
-cells.append(nbf.v4.new_markdown_cell("""# 🎧 Multi-Modal Content-Based Music Recommendation Engine
+cells.append(nbf.v4.new_markdown_cell("""#  Multi-Modal Content-Based Music Recommendation Engine
 ### Fusing Full-Song Acoustic Embeddings, Multilingual Lyrics, Mood & Vibe Descriptors, and Contextual Guards
 
 This notebook implements an industrial-grade **multi-modal content-based recommendation engine** for 10,000 Spotify songs. We demonstrate:
 
-1. **Sub-Millisecond Pre-computed Top-100 Lookups:** Querying [`knn_audio_top100.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_audio_top100.parquet), [`knn_lyric_top100.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_lyric_top100.parquet), [`knn_mood_top100.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_mood_top100.parquet), and [`knn_combined_top100.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_combined_top100.parquet).
-2. **Dynamic Multi-Modal Interactive Engine:** Blending acoustic timbre, lyrical narrative, emotional mood (59-D), genre style, and temporal era with customizable weights.
+1. **Sub-Millisecond Pre-computed Top-250 Lookups:** Querying [`knn_audio_top250.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_audio_top250.parquet), [`knn_lyric_top250.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_lyric_top250.parquet), [`knn_mood_top250.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_mood_top250.parquet), and [`knn_combined_top250.parquet`](file:///home/esstee/projects/top10k/music-prediction/data/similarity/knn_combined_top250.parquet).
+2. **Dynamic Multi-Modal Interactive Engine:** Blending acoustic timbre, lyrical narrative, unified mood & context (83-D), genre style, and temporal era with customizable weights.
 3. **Contextual Constraints & Diversity Guards:** Enforcing same-language, same-decade filtering, or artist diversity penalties.
 4. **Visual Playlist Journey on 2D Latent Manifold:** Visualizing smooth transition paths across the 2D multimodal latent space.
 """))
@@ -59,35 +59,42 @@ e5_lyric = np.load(DATA_DIR / 'embeddings' / 'lyric' / 'multilingual_e5_large_10
 has_lyrics = (np.linalg.norm(harrier, axis=1, keepdims=True) > 1e-6).astype(np.float32)
 lyric_norm = l2_norm(np.concatenate([l2_norm(harrier), l2_norm(e5_lyric)], axis=1)) * has_lyrics
 
-# 3. Mood & Emotion Representation (59-D: Spotify 11-D + GoEmotions/NRC 36-D + Vocal DSP 12-D)
+# 3. Unified Mood & Context Representation (83-D: Genre 40% + Spotify 30% + Temporal 15% + Vocal DSP 15%)
+# Emotion 36-D omitted per LOGO ablation due to non-English zero-padding disparity
 spotify_11d = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'spotify_audio_11d.npy')
-emotion_36d = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'emotion_sentiment_36d.npy')
 vocal_12d   = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'vocal_dsp_12d.npy')
-mood_norm = l2_norm(np.concatenate([l2_norm(spotify_11d), l2_norm(emotion_36d), l2_norm(vocal_12d)], axis=1))
+genre_50d   = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'genre_hybrid_50d.npy')
+temporal_10d = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'temporal_collab_10d.npy')
+
+mood_blocks = [
+    np.sqrt(0.40) * l2_norm(genre_50d),
+    np.sqrt(0.30) * l2_norm(spotify_11d),
+    np.sqrt(0.15) * l2_norm(temporal_10d),
+    np.sqrt(0.15) * l2_norm(vocal_12d)
+]
+mood_norm = l2_norm(np.concatenate(mood_blocks, axis=1))
 
 # 4. Genre Style Representation (50-D: 17-D Main + 17-D Sub Rollup + 16-D Latent SVD)
-genre_50d = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'genre_hybrid_50d.npy')
 genre_norm = l2_norm(genre_50d)
 
 # 5. Temporal & Collaboration Context (10-D)
-temporal_10d = np.load(DATA_DIR / 'embeddings' / 'metadata' / 'temporal_collab_10d.npy')
 temporal_norm = l2_norm(temporal_10d)
 
 print(f"Loaded representations for {len(songs):,} songs:")
-print(f"  • Audio Embedding Dimension:    {audio_norm.shape[1]}-D")
-print(f"  • Lyric Embedding Dimension:    {lyric_norm.shape[1]}-D")
-print(f"  • Mood & Emotion Dimension:     {mood_norm.shape[1]}-D")
-print(f"  • Genre Hybrid Dimension:       {genre_norm.shape[1]}-D")
-print(f"  • Temporal & Context Dimension: {temporal_norm.shape[1]}-D")
+print(f"  • Audio Embedding Dimension:          {audio_norm.shape[1]}-D")
+print(f"  • Lyric Embedding Dimension:          {lyric_norm.shape[1]}-D")
+print(f"  • Unified Mood & Context Dimension:   {mood_norm.shape[1]}-D")
+print(f"  • Genre Hybrid Dimension:             {genre_norm.shape[1]}-D")
+print(f"  • Temporal & Context Dimension:       {temporal_norm.shape[1]}-D")
 """))
 
-# Section 2: Fast-Path Top-100 Pre-computed Graph Query
-cells.append(nbf.v4.new_markdown_cell("""## 2. Fast-Path: Querying Pre-Computed Top-100 Matrices
-For latency-critical applications, query the static Top-100 Parquet graphs directly ($O(1)$ sub-millisecond lookup).
+# Section 2: Fast-Path Top-250 Pre-computed Graph Query
+cells.append(nbf.v4.new_markdown_cell("""## 2. Fast-Path: Querying Pre-Computed Top-250 Matrices
+For latency-critical applications, query the static Top-250 Parquet graphs directly ($O(1)$ sub-millisecond lookup).
 """))
 cells.append(nbf.v4.new_code_cell("""# Load pre-computed graph files
-knn_combined = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_combined_top100.parquet')
-knn_mood = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_mood_top100.parquet')
+knn_combined = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_combined_top250.parquet')
+knn_mood = pd.read_parquet(DATA_DIR / 'similarity' / 'knn_mood_top250.parquet')
 
 seed_idx = 42
 seed_title = songs.iloc[seed_idx]['track_name']
@@ -95,8 +102,8 @@ seed_artist = songs.iloc[seed_idx]['artist_names']
 
 print(f"Seed Track [{seed_idx}]: '{seed_title}' by {seed_artist}\\n")
 
-print("⚡ Top 3 Instant Recommendations from Pre-computed Combined Top-100 Graph:")
-for nb_idx, sim in zip(knn_combined.iloc[seed_idx]['top100_neighbor_indices'][:3], knn_combined.iloc[seed_idx]['top100_similarities'][:3]):
+print("Top 3 Instant Recommendations from Pre-computed Combined Top-250 Graph:")
+for nb_idx, sim in zip(knn_combined.iloc[seed_idx]['top250_neighbor_indices'][:3], knn_combined.iloc[seed_idx]['top250_similarities'][:3]):
     print(f"  - '{songs.iloc[nb_idx]['track_name']}' by {songs.iloc[nb_idx]['artist_names']} (Similarity: {sim:.3f})")
 """))
 
@@ -109,11 +116,11 @@ $$\\text{Sim}_{\\text{Total}} = w_a \\cdot S_{\\text{audio}} + w_l \\cdot S_{\\t
 cells.append(nbf.v4.new_code_cell("""def recommend_songs(
     seed_idx: int,
     top_k: int = 5,
-    audio_weight: float = 0.35,
-    lyric_weight: float = 0.25,
-    mood_weight: float = 0.20,
-    genre_weight: float = 0.15,
-    temporal_weight: float = 0.05,
+    audio_weight: float = 0.38,
+    lyric_weight: float = 0.35,
+    mood_weight: float = 0.15,
+    genre_weight: float = 0.08,
+    temporal_weight: float = 0.04,
     same_language_only: bool = False,
     same_decade_only: bool = False,
     penalize_same_artist: bool = True
@@ -186,24 +193,24 @@ display(recommend_songs(seed_idx, top_k=5))
 """))
 
 # Section 4: Comparative Exploration
-cells.append(nbf.v4.new_markdown_cell("""## 4. Comparing Sonic Feel vs. Lyrical Story vs. Emotional Mood
+cells.append(nbf.v4.new_markdown_cell("""## 4. Comparing Sonic Feel vs. Lyrical Story vs. Unified Mood & Context
 Notice how shifting the pillar weights changes the recommendations:
 - **Sonic Vibe Focus ($w_a=0.8$):** Matches beat, tempo, instruments, and production texture.
 - **Lyrical Narrative Focus ($w_l=0.8$):** Matches poetic themes, metaphors, and storytelling regardless of tempo.
-- **Emotional Mood Focus ($w_m=0.8$):** Matches valence, energy, and sadness/joy emotional profiles.
+- **Unified Mood & Context Focus ($w_m=0.8$):** Matches continuous vibe, vocal presence, genre identity, and temporal era.
 """))
 cells.append(nbf.v4.new_code_cell("""seed_idx = 15
 seed_title = songs.iloc[seed_idx]['track_name']
 seed_artist = songs.iloc[seed_idx]['artist_names']
 print(f"Seed Track [{seed_idx}]: '{seed_title}' by {seed_artist}\\n")
 
-print("🎵 1. Pure Sonic Vibe Focus (audio_weight = 0.8):")
+print("1. Pure Sonic Vibe Focus (audio_weight = 0.8):")
 display(recommend_songs(seed_idx, top_k=3, audio_weight=0.8, lyric_weight=0.05, mood_weight=0.05, genre_weight=0.10)[['track_name', 'artist_names', 'main_genres', 'similarity_score']])
 
-print("\\n📝 2. Pure Lyrical Narrative Focus (lyric_weight = 0.8):")
+print("\\n 2. Pure Lyrical Narrative Focus (lyric_weight = 0.8):")
 display(recommend_songs(seed_idx, top_k=3, audio_weight=0.05, lyric_weight=0.8, mood_weight=0.05, genre_weight=0.10)[['track_name', 'artist_names', 'main_genres', 'similarity_score']])
 
-print("\\n🎭 3. Pure Emotional Mood Focus (mood_weight = 0.8):")
+print("\\n 3. Pure Unified Mood & Context Focus (mood_weight = 0.8):")
 display(recommend_songs(seed_idx, top_k=3, audio_weight=0.05, lyric_weight=0.05, mood_weight=0.8, genre_weight=0.10)[['track_name', 'artist_names', 'main_genres', 'similarity_score']])
 """))
 
